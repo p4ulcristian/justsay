@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Download a speech model into ~/.local/share/justsay/models.
+#
+#   justsay-fetch-model            Whisper large-v3-turbo fp16 (the default model)
+#   justsay-fetch-model parakeet   Parakeet TDT 0.6B v3
+#
+# onnxruntime refuses to follow the Hugging Face cache symlinks to a separate
+# weights file, so the files are copied into a plain directory rather than
+# used from the cache.
+set -euo pipefail
+cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
+
+case "${1:-whisper}" in
+  whisper)
+    REPO="onnx-community/whisper-large-v3-turbo"
+    DEST="$HOME/.local/share/justsay/models/whisper-large-v3-turbo"
+    FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
+           vocab.json added_tokens.json config.json"
+    ;;
+  parakeet)
+    REPO="istupakov/parakeet-tdt-0.6b-v3-onnx"
+    DEST="$HOME/.local/share/justsay/models/parakeet-tdt-0.6b-v3"
+    FILES="encoder-model.onnx encoder-model.onnx.data decoder_joint-model.onnx
+           nemo128.onnx vocab.txt config.json"
+    ;;
+  *)
+    echo "usage: $0 [whisper|parakeet]" >&2
+    exit 1
+    ;;
+esac
+
+echo "Fetching $REPO ..."
+SNAP=$(.venv/bin/python - "$REPO" $FILES <<'PY'
+import sys
+from huggingface_hub import snapshot_download
+print(snapshot_download(sys.argv[1], allow_patterns=sys.argv[2:]))
+PY
+)
+
+mkdir -p "$DEST"
+for f in $FILES; do
+  # install, not cp: the cache files are read-only, and a rerun must replace them.
+  install -D -m 644 "$SNAP/$f" "$DEST/$f"
+done
+echo "Model installed in $DEST"
+du -sh "$DEST"

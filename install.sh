@@ -1,39 +1,72 @@
 #!/usr/bin/env bash
-# Install the iris-ptt push-to-talk client from this repo into the user's
-# system locations and (re)start the service. Idempotent.
+# Install justsay for the current user. Safe to run again.
+#
+#   ./install.sh          Whisper large-v3-turbo on an NVIDIA GPU (default)
+#   ./install.sh --cpu    Parakeet on the CPU: no GPU needed, no language lock
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$(readlink -f "$0")")"
+SRC=$PWD
+PLUGIN=p4ulcristian.justsay-wave
 
-BIN="$HOME/.local/bin"
-UNIT_DIR="$HOME/.config/systemd/user"
-CFG="$HOME/.config/iris-ptt"
-
-mkdir -p "$BIN" "$UNIT_DIR" "$CFG"
-
-# 1. daemon
-install -m 0755 iris-ptt-daemon.py "$BIN/iris-ptt-daemon.py"
-echo "✓ daemon -> $BIN/iris-ptt-daemon.py"
-
-# 2. systemd user service
-install -m 0644 iris-ptt.service "$UNIT_DIR/iris-ptt.service"
-echo "✓ service -> $UNIT_DIR/iris-ptt.service"
-
-# 3. keyd remap (needs sudo; only if not already present)
-if ! grep -q '^capslock' /etc/keyd/default.conf 2>/dev/null; then
-  echo "… adding 'capslock = f13' to /etc/keyd/default.conf (sudo)"
-  sudo sed -i '/^\[main\]/a capslock = f13' /etc/keyd/default.conf
-  sudo keyd reload
-fi
-echo "✓ keyd: capslock -> f13"
-
-# 4. API key reminder
-if [ ! -s "$CFG/api_key" ]; then
-  echo "!! Put the iris-comms API key at $CFG/api_key (chmod 600) before use."
+missing=()
+for tool in uv wtype wl-copy parec pactl notify-send; do
+  command -v "$tool" >/dev/null || missing+=("$tool")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "Missing: ${missing[*]}" >&2
+  echo "On Arch: sudo pacman -S uv wtype wl-clipboard libpulse libnotify" >&2
+  exit 1
 fi
 
-# 5. (re)start service
+echo "Setting up the Python environment ..."
+[ -d .venv ] || uv venv -q --python 3.12 .venv
+uv pip install -q --python .venv/bin/python -r requirements.txt
+
+if [ "${1:-}" = "--cpu" ]; then
+  ./bin/justsay-fetch-model parakeet
+  mkdir -p ~/.config/justsay
+  if [ ! -f ~/.config/justsay/config.toml ]; then
+    cat > ~/.config/justsay/config.toml <<'TOML'
+model = "nemo-parakeet-tdt-0.6b-v3"
+model_path = "~/.local/share/justsay/models/parakeet-tdt-0.6b-v3"
+quantization = ""
+device = "cpu"
+TOML
+    echo "Wrote ~/.config/justsay/config.toml for Parakeet on the CPU"
+  fi
+else
+  ./bin/justsay-fetch-model whisper
+fi
+
+mkdir -p ~/.local/bin ~/.config/systemd/user
+for b in justsay-daemon justsayctl justsay-selftest; do
+  ln -sfn "$SRC/bin/$b" ~/.local/bin/$b
+done
+
+# The waveform overlay, if this is Omarchy.
+SHELL_JSON=~/.config/omarchy/shell.json
+if [ -f "$SHELL_JSON" ]; then
+  mkdir -p ~/.config/omarchy/plugins
+  ln -sfn "$SRC/overlay" ~/.config/omarchy/plugins/$PLUGIN
+  python3 - "$SHELL_JSON" "$PLUGIN" <<'PY'
+import json, sys
+path, plugin = sys.argv[1:]
+with open(path) as f:
+    cfg = json.load(f)
+plugins = cfg.setdefault("plugins", [])
+if not any(p.get("id") == plugin for p in plugins):
+    plugins.append({"id": plugin})
+    with open(path, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print("enabled the waveform overlay in", path)
+PY
+fi
+
+cp systemd/justsay.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now iris-ptt.service
-systemctl --user restart iris-ptt.service
-echo "✓ service running:"
-systemctl --user --no-pager status iris-ptt.service | sed -n '1,3p'
+systemctl --user enable --now justsay
+systemctl --user restart justsay
+echo
+echo "Installed. Logs: journalctl --user -u justsay -f"
+echo "Caps Lock still does its normal job until you free it; see README, 'Freeing Caps Lock'."

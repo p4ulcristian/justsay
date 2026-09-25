@@ -1,0 +1,6 @@
+# Installed into .venv with: uv pip install -r requirements.txt
+# onnxruntime-gpu brings its own CUDA and cuDNN from pip; nothing system wide.
+onnx-asr[hub]==0.12.0
+onnxruntime-gpu[cuda,cudnn]
+evdev==2.0.0
+numpy==2.5.3

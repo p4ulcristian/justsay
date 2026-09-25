@@ -1,4 +1,4 @@
+.venv/
 __pycache__/
 *.pyc
-# never commit the API key — it lives at ~/.config/iris-ptt/api_key
-api_key
+models/

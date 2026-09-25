@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Run the resident dictation daemon in the foreground.
+cd "$(dirname "$(dirname "$(readlink -f "$0")")")" || exit 1
+exec .venv/bin/python -m justsay.daemon "$@"
