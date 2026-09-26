@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Download a speech model into ~/.local/share/iris-dictation/models.
 #
-#   iris-dictation-fetch-model            Whisper large-v3-turbo fp16 (the default model)
-#   iris-dictation-fetch-model parakeet   Parakeet TDT 0.6B v3
+#   iris-dictation-fetch-model               Whisper large-v3-turbo fp16 (the default model)
+#   iris-dictation-fetch-model whisper-large Whisper large-v3 fp16 (full decoder: slower, more accurate)
+#   iris-dictation-fetch-model parakeet      Parakeet TDT 0.6B v3
 #
 # onnxruntime refuses to follow the Hugging Face cache symlinks to a separate
-# weights file, so the files are copied into a plain directory rather than
-# used from the cache.
+# weights file, so the files are downloaded straight into a plain directory,
+# not into the cache.
 set -euo pipefail
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 
@@ -17,6 +18,12 @@ case "${1:-whisper}" in
     FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
            vocab.json added_tokens.json config.json"
     ;;
+  whisper-large)
+    REPO="onnx-community/whisper-large-v3-ONNX"
+    DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3"
+    FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
+           vocab.json added_tokens.json config.json"
+    ;;
   parakeet)
     REPO="istupakov/parakeet-tdt-0.6b-v3-onnx"
     DEST="$HOME/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
@@ -24,23 +31,18 @@ case "${1:-whisper}" in
            nemo128.onnx vocab.txt config.json"
     ;;
   *)
-    echo "usage: $0 [whisper|parakeet]" >&2
+    echo "usage: $0 [whisper|whisper-large|parakeet]" >&2
     exit 1
     ;;
 esac
 
-echo "Fetching $REPO ..."
-SNAP=$(.venv/bin/python - "$REPO" $FILES <<'PY'
+echo "Fetching $REPO into $DEST ..."
+mkdir -p "$DEST"
+.venv/bin/python - "$REPO" "$DEST" $FILES <<'PY'
 import sys
 from huggingface_hub import snapshot_download
-print(snapshot_download(sys.argv[1], allow_patterns=sys.argv[2:]))
+repo, dest, *files = sys.argv[1:]
+snapshot_download(repo, allow_patterns=files, local_dir=dest)
 PY
-)
-
-mkdir -p "$DEST"
-for f in $FILES; do
-  # install, not cp: the cache files are read-only, and a rerun must replace them.
-  install -D -m 644 "$SNAP/$f" "$DEST/$f"
-done
 echo "Model installed in $DEST"
 du -sh "$DEST"
