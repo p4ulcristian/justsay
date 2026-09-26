@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0
+
+Fixed:
+- Recordings longer than 30 seconds lost everything after 30 s (Whisper
+  hears 30 s at a time). Long recordings are now cut at pauses into pieces
+  of at most 28 s and transcribed piece by piece.
+
 ## 2.2.0
 
 Removed:

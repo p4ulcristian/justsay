@@ -186,7 +186,10 @@ class Daemon:
         return text
 
     def recognize(self, samples: np.ndarray, rate: int) -> str:
-        return (self.model.recognize(samples, sample_rate=rate) or "").strip()
+        # Whisper hears 30 s at a time; a longer recording goes in pieces.
+        texts = (self.model.recognize(piece, sample_rate=rate) or ""
+                 for piece in audio.split_at_pauses(samples, rate))
+        return " ".join(t.strip() for t in texts if t.strip())
 
     def deliver(self, text: str) -> None:
         payload = text + (" " if self.cfg.trailing_space else "")

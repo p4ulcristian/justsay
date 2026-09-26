@@ -37,3 +37,23 @@ def test_clip(clip):
 def test_missing_file_does_not_kill_the_daemon():
     assert ctl.send("transcribe /nonexistent.wav") == ""
     assert ctl.send("ping") == "pong"
+
+
+def test_recording_longer_than_30_seconds_keeps_the_end(tmp_path):
+    # ~45 s: the English clips back to back with short pauses. Whisper hears
+    # 30 s at a time, so the last sentence only survives if the daemon splits.
+    import wave
+    names = ["16k_fleurs_en_0.wav", "16k_fleurs_en_1.wav", "16k_fleurs_en_2.wav",
+             "16k_fleurs_en_0.wav", "16k_fleurs_en_2.wav"]
+    out = tmp_path / "long.wav"
+    with wave.open(str(out), "wb") as o:
+        for i, name in enumerate(names):
+            with wave.open(str(CLIPS / name)) as w:
+                if i == 0:
+                    o.setparams(w.getparams())
+                o.writeframes(w.readframes(w.getnframes()) + b"\0\0" * 8000)   # 0.5 s pause
+    with wave.open(str(out)) as w:
+        assert w.getnframes() / w.getframerate() > 40
+    text = ctl.send(f"transcribe {out}").lower()
+    assert "archipelago" in text                     # middle
+    assert text.count("global warming") == 2         # the end, past 30 s
