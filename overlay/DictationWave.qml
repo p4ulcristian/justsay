@@ -103,19 +103,31 @@ Item {
     onTriggered: root.mode = "hidden"
   }
 
-  Socket {
-    id: levels
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/iris-dictation/levels.sock"
-    connected: true
-    parser: SplitParser { onRead: data => root.handle(data) }
-    // iris-dictation restarts (or starts after the shell): keep knocking.
-    onConnectedChanged: if (!connected) reconnect.start()
+  // The connection to iris-dictation. It restarts, or starts after the shell, and
+  // its socket only appears once the model has loaded, so keep knocking until it
+  // answers. After a refused attempt a Socket will not try again, so each retry
+  // builds a fresh one.
+  Loader {
+    id: link
+    sourceComponent: Socket {
+      path: Quickshell.env("XDG_RUNTIME_DIR") + "/iris-dictation/levels.sock"
+      connected: true
+      parser: SplitParser { onRead: data => root.handle(data) }
+      onConnectedChanged: if (!connected) {
+        root.mode = "hidden"          // don't leave a frozen pill up
+        retry.restart()
+      }
+      onError: retry.restart()
+    }
   }
 
   Timer {
-    id: reconnect
+    id: retry
     interval: 2000
-    onTriggered: levels.connected = true
+    onTriggered: {
+      link.active = false
+      link.active = true
+    }
   }
 
   // Runs while the pill is up. amp always eases toward its goal, so the voice

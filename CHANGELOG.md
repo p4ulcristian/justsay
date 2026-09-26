@@ -21,6 +21,9 @@ Changed:
   on `levels.sock` (see PROTOCOL.md).
 
 Fixed:
+- The overlay stopped appearing for good after iris-dictation restarted: it
+  retried the connection once, before the model had loaded. It now retries
+  every 2 seconds until the daemon answers.
 - `transcribe` with a missing or broken file crashed the daemon.
 - `transcribe` with a relative path looked in the daemon's directory.
 - `notify = false` silenced only one of the three notifications.
