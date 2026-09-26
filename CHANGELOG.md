@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+Added:
+- Format mode, for things that can't be dictated as sentences: hold
+  `format_key` (or send `start-format`) and "example dot com web page" is
+  typed as `https://example.com`, "method get user profile" as
+  `getUserProfile`. Fixed rules plus a small local language model behind any
+  OpenAI-compatible endpoint (Ollama by default). See the README.
+- A private vocabulary for format mode,
+  `~/.config/iris-dictation/vocabulary.toml`.
+- Control commands `start-format` and `format <text>`; overlay event
+  `format`. The overlay's dot is yellow in format mode.
+
 ## 1.1.0
 
 To update: `git pull`, run `./install.sh` again (with `--cpu` if you

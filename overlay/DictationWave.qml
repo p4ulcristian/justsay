@@ -9,12 +9,12 @@ import qs.Ui
 // Dictation overlay for the Omarchy shell. iris-dictation broadcasts its state and the
 // live voice level on $XDG_RUNTIME_DIR/iris-dictation/levels.sock (see PROTOCOL.md),
 // one line per event:
-//   recording | level 0.42 | transcribing | text <result> | typing <chars> | nothing | idle
+//   recording | format | level 0.42 | transcribing | text <result> | typing <chars> | nothing | idle
 // One look from start to finish: a still dot on the left and three tapered neon
 // sine waves. While recording the waves follow the voice. While waiting
 // (transcribing, then typing the text out) they ease into a slow breath of their
 // own; during typing they sit behind the text and light up from the left as it
-// goes out.
+// goes out. In format mode (a URL, a name) the dot is yellow instead of cyan.
 Item {
   id: root
 
@@ -26,6 +26,7 @@ Item {
   property real clock: 0              // seconds, drives the breath while waiting
   property real typed: 0              // 0..1, typing progress bar
   property bool typing: false
+  property bool formatMode: false     // this dictation becomes a URL / name / command
   // Waiting on iris-dictation (transcribing, then typing a long result): the waves
   // breathe on their own instead of following the voice.
   readonly property bool loading: mode === "transcribing" || (mode === "result" && typing)
@@ -54,7 +55,10 @@ Item {
       hideTimer.stop()
       root.result = ""
       root.target = 0
+      root.formatMode = false
       root.mode = "recording"
+    } else if (verb === "format") {
+      root.formatMode = true
     } else if (verb === "transcribing") {
       root.target = 0
       root.mode = "transcribing"
@@ -183,7 +187,7 @@ Item {
         height: width
         radius: width / 2
         gradient: Gradient {
-          GradientStop { position: 0; color: root.hues[0] }
+          GradientStop { position: 0; color: root.formatMode ? root.hues[2] : root.hues[0] }
           GradientStop { position: 1; color: root.hues[1] }
         }
       }

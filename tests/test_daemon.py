@@ -92,3 +92,25 @@ def test_thank_you_said_out_loud_is_kept(make):
     d.on_down()
     d.on_up()
     assert typed == ["thank you "]
+
+
+def test_format_mode_types_the_formatted_string_exactly(make, monkeypatch):
+    d, typed, sent = make(text="Example dot com web page.")
+    monkeypatch.setattr(d.formatter, "warm", lambda: None)
+    monkeypatch.setattr(d.formatter, "format", lambda text: "https://example.com")
+    d.on_down("format")
+    d.on_up()
+    assert typed == ["https://example.com"]          # no trailing space
+    assert sent[:2] == ["recording", "format"]
+    assert "text https://example.com" in sent
+
+
+def test_after_format_mode_the_next_press_types_normally(make, monkeypatch):
+    d, typed, _ = make()
+    monkeypatch.setattr(d.formatter, "warm", lambda: None)
+    monkeypatch.setattr(d.formatter, "format", lambda text: "x")
+    d.on_down("format")
+    d.on_up()
+    d.on_down()
+    d.on_up()
+    assert typed == ["x", "This is a test. "]

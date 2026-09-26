@@ -16,13 +16,19 @@ def test_start_stop():
     ctl, events = server()
     assert ctl.handle("start") == "ok"
     assert ctl.handle("stop") == "ok"
-    assert [events.get_nowait(), events.get_nowait()] == [("down",), ("up",)]
+    assert [events.get_nowait(), events.get_nowait()] == [("down", "type"), ("up",)]
+
+
+def test_start_format():
+    ctl, events = server()
+    assert ctl.handle("start-format") == "ok"
+    assert events.get_nowait() == ("down", "format")
 
 
 def test_toggle():
     ctl, events = server("idle")
     ctl.handle("toggle")
-    assert events.get_nowait() == ("down",)
+    assert events.get_nowait() == ("down", "type")
     ctl, events = server("recording")
     ctl.handle("toggle")
     assert events.get_nowait() == ("up",)
@@ -58,4 +64,11 @@ def test_transcribe_replies_with_text():
     ctl, events = server()
     t = answer(events, "a satellite")
     assert ctl.handle("transcribe /tmp/x.wav") == "a satellite"
+    t.join()
+
+
+def test_format_replies_with_text():
+    ctl, events = server()
+    t = answer(events, "https://example.com")
+    assert ctl.handle("format example dot com web page") == "https://example.com"
     t.join()

@@ -86,6 +86,8 @@ Hold the key, speak, release. From scripts or other tools:
 iris-dictation start          # begin recording
 iris-dictation stop           # stop, transcribe, type
 iris-dictation stop-return    # stop, transcribe, print the text instead of typing
+iris-dictation start-format   # begin recording in format mode (see below)
+iris-dictation format "example dot com web page"   # print https://example.com
 iris-dictation toggle
 iris-dictation status         # idle | recording | transcribing
 iris-dictation transcribe some.wav   # print the text, type nothing
@@ -96,6 +98,42 @@ systemctl --user restart iris-dictation
 journalctl --user -u iris-dictation -f
 iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
 ```
+
+## Format mode: URLs, names, commands
+
+Some things can't be dictated as sentences. Hold the format key instead (or
+send `start-format`) and the phrase is typed as the exact string it names,
+with nothing after it:
+
+| you say | it types |
+|---|---|
+| "example dot com web page" | `https://example.com` |
+| "john dot doe at example dot com" | `john.doe@example.com` |
+| "method get user profile" | `getUserProfile` |
+| "snake case max retry count" | `max_retry_count` |
+| "git status dash dash short" | `git status --short` |
+
+Fixed rules handle case styles, spoken symbols and commands with flags. The
+rest goes to a small local language model, about 0.1 s per phrase on a GPU.
+Any OpenAI-compatible server works; with Ollama:
+
+```sh
+ollama pull qwen3.5:2b-q4_K_M
+```
+
+```toml
+# ~/.config/iris-dictation/config.toml
+format_key = "KEY_RIGHTALT"                 # any evdev KEY_* name
+format_url = "http://localhost:11434/v1"    # the default
+format_model = "qwen3.5:2b-q4_K_M"          # the default
+```
+
+Without a model, format mode still applies the rules. Teach it your own
+names and domains in `~/.config/iris-dictation/vocabulary.toml`, copied from
+[vocabulary.example.toml](vocabulary.example.toml); edits apply on the next
+dictation. That file stays on your machine, and so does the model.
+
+Try it without speaking: `iris-dictation format example dot com web page`.
 
 ## Config
 

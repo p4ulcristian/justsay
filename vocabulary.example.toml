@@ -1,0 +1,12 @@
+# Your own words for format mode. Copy to ~/.config/iris-dictation/vocabulary.toml
+# and edit; changes apply on the next dictation, no restart needed.
+# This file is private: keep your real words out of any repository.
+
+# Names and spellings the model should prefer.
+words = ["Zorbex", "Quillo"]
+
+# What you say (roughly as the speech recogniser writes it) -> exactly what to
+# type. An exact match skips the model; the rest become examples for it.
+[heard]
+"zor bex dot example" = "zorbex.example"
+"quill oh app" = "QuilloApp"

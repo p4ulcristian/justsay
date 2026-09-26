@@ -13,9 +13,9 @@ from pathlib import Path
 
 log = logging.getLogger("iris-dictation")
 
-CONFIG_PATH = Path(
-    os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
-) / "iris-dictation" / "config.toml"
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "iris-dictation"
+CONFIG_PATH = CONFIG_DIR / "config.toml"
+VOCABULARY_PATH = CONFIG_DIR / "vocabulary.toml"
 
 
 def runtime_dir() -> Path:
@@ -98,6 +98,20 @@ class Config:
     trailing_space: bool = True
 
     notify: bool = True
+
+    # Format mode: hold format_key (or send start-format on the socket) and
+    # the phrase is typed as the exact string it names: "example dot com web
+    # page" -> https://example.com, "method get user" -> getUser. Fixed rules
+    # do the simple cases; the rest goes to a small local language model
+    # behind an OpenAI-compatible endpoint (Ollama by default:
+    #   ollama pull qwen3.5:2b-q4_K_M).
+    # Your own words and spellings go in ~/.config/iris-dictation/vocabulary.toml (see
+    # vocabulary.example.toml). Empty key = no format key.
+    format_key: str = ""
+    format_url: str = "http://localhost:11434/v1"
+    format_model: str = "qwen3.5:2b-q4_K_M"
+    # Seconds to wait for the model; loading it from disk can take ~10 s.
+    format_timeout: float = 20.0
 
     # Mute these apps' microphone streams while the key is held, so a voice
     # call does not hear the dictation. Matched case-insensitively against

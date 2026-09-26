@@ -12,11 +12,13 @@ from .sockets import SOCKET_NAME
 USAGE = """usage: iris-dictation <command>
 
   start        begin recording
+  start-format begin recording in format mode (URLs, names, commands)
   stop         stop recording, transcribe, paste
   stop-return  stop recording, transcribe, reply with the text instead of pasting
   toggle       start if idle, stop if recording
   status       print idle | recording | transcribing
   transcribe <file.wav>   run a wav through the pipeline, print the text
+  format <text>           print the text formatted, e.g. format example dot com
   ping         check the daemon is alive
   quit         shut the daemon down
 """
