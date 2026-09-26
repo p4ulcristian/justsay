@@ -1,40 +1,16 @@
 #!/usr/bin/env bash
-# Download a speech model into ~/.local/share/iris-dictation/models.
+# Download the speech model, Whisper large-v3 in fp16 ONNX, into
+# ~/.local/share/iris-dictation/models/whisper-large-v3.
 #
-#   iris-dictation-fetch-model               Whisper large-v3-turbo fp16 (the default model)
-#   iris-dictation-fetch-model whisper-large Whisper large-v3 fp16 (full decoder: slower, more accurate)
-#   iris-dictation-fetch-model parakeet      Parakeet TDT 0.6B v3
-#
-# onnxruntime refuses to follow the Hugging Face cache symlinks to a separate
-# weights file, so the files are downloaded straight into a plain directory,
-# not into the cache.
+# The files go straight into that plain directory, not the Hugging Face
+# cache: onnxruntime will not follow the cache's symlinks to the weights.
 set -euo pipefail
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 
-case "${1:-whisper}" in
-  whisper)
-    REPO="onnx-community/whisper-large-v3-turbo"
-    DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3-turbo"
-    FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
-           vocab.json added_tokens.json config.json"
-    ;;
-  whisper-large)
-    REPO="onnx-community/whisper-large-v3-ONNX"
-    DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3"
-    FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
-           vocab.json added_tokens.json config.json"
-    ;;
-  parakeet)
-    REPO="istupakov/parakeet-tdt-0.6b-v3-onnx"
-    DEST="$HOME/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
-    FILES="encoder-model.onnx encoder-model.onnx.data decoder_joint-model.onnx
-           nemo128.onnx vocab.txt config.json"
-    ;;
-  *)
-    echo "usage: $0 [whisper|whisper-large|parakeet]" >&2
-    exit 1
-    ;;
-esac
+REPO="onnx-community/whisper-large-v3-ONNX"
+DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3"
+FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
+       vocab.json added_tokens.json config.json"
 
 echo "Fetching $REPO into $DEST ..."
 mkdir -p "$DEST"

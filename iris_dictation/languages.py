@@ -20,9 +20,6 @@ log = logging.getLogger("iris-dictation")
 def restrict(model, languages: list[str]) -> None:
     """Patch a loaded onnx-asr Whisper model to only pick from `languages`."""
     asr = model.asr
-    if not hasattr(asr, "_decode"):
-        log.info("model has no language detection, ignoring languages=%s", languages)
-        return
     if len(languages) == 1:
         # One language: plain forcing, no detection pass at all.
         original = asr.recognize_batch

@@ -6,9 +6,9 @@ cloud, no account.
 
 The program itself is called **iris-dictation**: `iris-dictation`, `iris-dictation.service`.
 
-- **Fast.** Whisper large-v3-turbo on the GPU transcribes a 4–16 second clip
-  in 120–180 ms, measured on an RTX 5060 Ti. The model stays loaded, so a
-  key press never waits for it.
+- **Fast.** Whisper large-v3 on the GPU transcribes a short phrase in about
+  0.2 s and a long sentence in about 0.4 s, measured on an RTX 5060 Ti. The
+  model stays loaded, so a key press never waits for it.
 - **Any language, or just yours.** Whisper detects the language on every
   clip. Tell it which ones you speak (`languages = ["hu", "en"]`) and short
   clips stop coming out in a third language.
@@ -26,9 +26,7 @@ The program itself is called **iris-dictation**: `iris-dictation`, `iris-dictati
 ## Requirements
 
 - Hyprland (Omarchy for the waveform overlay), PipeWire.
-- An NVIDIA GPU with about 4 GB of free VRAM for the default Whisper model.
-  No GPU: install with `--cpu` to use Parakeet on the CPU instead (about
-  0.5–1 s per clip, 25 European languages, but no language lock).
+- An NVIDIA GPU with about 5 GB of free VRAM.
 - `uv`, `wtype`, `wl-clipboard`, `libpulse` (for `parec`/`pactl`),
   `libnotify`:
 
@@ -40,11 +38,11 @@ sudo pacman -S uv wtype wl-clipboard libpulse libnotify
 
 ```sh
 git clone https://github.com/p4ulcristian/omarchy-dictation ~/.local/share/omarchy-dictation
-~/.local/share/omarchy-dictation/install.sh          # or: install.sh --cpu
+~/.local/share/omarchy-dictation/install.sh
 ```
 
 The installer creates a Python environment inside the clone, downloads the
-model (about 1.6 GB) to `~/.local/share/iris-dictation/models/`, links
+model (about 3.1 GB) to `~/.local/share/iris-dictation/models/`, links
 `iris-dictation` and friends into `~/.local/bin`, adds the waveform overlay to
 the Omarchy shell if there is one, and starts the `iris-dictation` systemd user
 service.
@@ -95,25 +93,6 @@ iris-dictation transcribe some.wav   # print the text, type nothing
 systemctl --user restart iris-dictation
 journalctl --user -u iris-dictation -f
 iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
-```
-
-## Granite Speech instead of Whisper (optional)
-
-IBM Granite Speech 4.1 2B makes about a third fewer mistakes than Whisper
-turbo in English (Open ASR Leaderboard: 5.33% vs 7.83% word error rate) and
-takes your vocabulary as a keyword list, so names are heard right in the
-first place. English, French, German, Spanish, Portuguese and Japanese only;
-about 0.5 s per clip and 4.6 GB of VRAM on an RTX 5060 Ti.
-
-```sh
-uv pip install --python .venv/bin/python -r requirements-granite.txt
-.venv/bin/hf download ibm-granite/granite-speech-4.1-2b \
-    --local-dir ~/.local/share/iris-dictation/models/granite-speech-4.1-2b
-```
-
-```toml
-# ~/.config/iris-dictation/config.toml
-engine = "granite"
 ```
 
 ## Second pass: your words, no "um"s
@@ -176,7 +155,6 @@ languages = ["hu", "en"]    # pick only among these; [] = any of 99
 key = "KEY_CAPSLOCK"        # any evdev KEY_* name
 output = "type"             # or "paste" (clipboard + paste shortcut), "clipboard"
 mute_apps = ["discord", "vesktop", "webcord"]   # add "chromium" for Discord in a browser
-device = "cuda"             # or "cpu"
 trailing_space = true
 preroll_ms = 0              # >0 keeps the mic open to catch the first syllable
 audio_source = ""           # a PipeWire source name; "" = default mic
@@ -202,19 +180,6 @@ The waveform overlay listens on `$XDG_RUNTIME_DIR/iris-dictation/levels.sock`, o
 line per event: `recording`, `level 0.42`, `transcribing`, `text …`, `idle`.
 Both sockets are documented in [PROTOCOL.md](PROTOCOL.md), for building your
 own tools on them.
-
-### Models
-
-| model | where | per 4–16 s clip | memory | language lock |
-|---|---|---|---|---|
-| Whisper large-v3-turbo fp16 (default) | GPU | 120–180 ms | ~3.7 GB VRAM | yes |
-| Whisper large-v3-turbo fp32 | GPU | about the same | ~6.4 GB VRAM | yes |
-| Parakeet TDT 0.6B v3 | GPU | 25–65 ms | | no |
-| Parakeet TDT 0.6B v3 (`--cpu`) | CPU, 6 cores | 410–990 ms | ~2.3 GB RAM | no |
-
-Parakeet is faster but guesses the language on its own, and on short clips
-it sometimes guesses wrong. Whisper was also slightly more accurate on the
-English test clips.
 
 `iris-dictation-selftest` runs the clips in `testwav/` through the running daemon
 and prints what it heard; nothing is typed.

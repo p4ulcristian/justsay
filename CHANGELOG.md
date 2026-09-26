@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0
+
+One model: Whisper large-v3 (full, fp16) on an NVIDIA GPU. About 0.2-0.4 s
+per clip and ~5 GB of VRAM; more accurate than large-v3-turbo, especially on
+accents.
+
+Removed:
+- The other models and modes: Whisper large-v3-turbo, Parakeet, the CPU
+  install (`install.sh --cpu`), the `model`, `quantization`, `device` and
+  `threads` settings, and the `--cpu`/`--cuda`/`--fp32` daemon flags. Remove
+  those settings from your config.toml; unknown settings are logged and
+  ignored.
+
+To update: `git pull`, run `./install.sh` again (it downloads the new model,
+3.1 GB), and delete `~/.local/share/iris-dictation/models/whisper-large-v3-turbo`
+and `.../parakeet-tdt-0.6b-v3` if you have them.
+
 ## 1.4.0
 
 Added:

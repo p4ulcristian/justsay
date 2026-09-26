@@ -37,6 +37,8 @@ from .text import is_silence_phrase, tidy_short
 log = logging.getLogger("iris-dictation")
 
 NOTIFY_TAG = "iris-dictation-status"
+# Its files are in cfg.model_path; the name tells onnx-asr how to load them.
+MODEL = "onnx-community/whisper-large-v3-ONNX"
 
 
 def notify(summary: str, body: str = "", timeout: int = 2000) -> None:
@@ -74,8 +76,7 @@ class Daemon:
             self.recorder = Recorder(cfg.sample_rate, cfg.max_seconds,
                                      cfg.audio_source)
         self.muter = StreamMuter(cfg.mute_apps)
-        self.model = None       # Whisper / Parakeet through onnx-asr
-        self.granite = None     # or Granite Speech (engine = "granite")
+        self.model = None
         self.levels = LevelServer(str(cfgmod.runtime_dir() / LEVELS_SOCKET))
         self.recorder.listener = lambda chunk: self.levels.send(f"level {audio.level(chunk):.3f}")
 
@@ -88,47 +89,21 @@ class Daemon:
         self.levels.send(state)
 
     def load_model(self) -> None:
-        if self.cfg.engine == "granite":
-            from .granite import Granite
-            self.granite = Granite(os.path.expanduser(self.cfg.granite_path))
-            t0 = time.time()
-            self.recognize(np.zeros(self.cfg.sample_rate, dtype=np.float32), self.cfg.sample_rate)
-            log.info("warmup %.2fs", time.time() - t0)
-            return
         import onnx_asr
+        import onnxruntime as ort
 
         t0 = time.time()
-        providers = None
-        if self.cfg.device == "cuda":
-            import onnxruntime as ort
-
-            # CUDA and cuDNN come from pip wheels, not the system. Load them
-            # before the first session so onnxruntime finds them.
-            ort.preload_dlls()
+        # CUDA and cuDNN come from pip wheels, not the system. Load them
+        # before the first session so onnxruntime finds them.
+        ort.preload_dlls()
+        self.model = onnx_asr.load_model(
+            MODEL, path=os.path.expanduser(self.cfg.model_path), quantization="fp16",
             # Grow the memory pool only by what is asked for, not in doubling
             # steps: about 300 MB less VRAM held, same speed.
-            providers = [
-                ("CUDAExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"}),
-                "CPUExecutionProvider",
-            ]
-
-        kwargs = {}
-        if self.cfg.quantization:
-            kwargs["quantization"] = self.cfg.quantization
-        if self.cfg.model_path:
-            kwargs["path"] = os.path.expanduser(self.cfg.model_path)
-        if providers:
-            kwargs["providers"] = providers
-        if self.cfg.device == "cpu" and self.cfg.threads:
-            import onnxruntime as ort
-
-            so = ort.SessionOptions()
-            so.intra_op_num_threads = self.cfg.threads
-            kwargs["sess_options"] = so
-
-        self.model = onnx_asr.load_model(self.cfg.model, **kwargs)
-        log.info("model loaded in %.2fs (%s)", time.time() - t0, self.cfg.device)
-        if self.cfg.languages and "whisper" in self.cfg.model:
+            providers=[("CUDAExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"}),
+                       "CPUExecutionProvider"])
+        log.info("model loaded in %.2fs", time.time() - t0)
+        if self.cfg.languages:
             languages.restrict(self.model, self.cfg.languages)
             log.info("languages: %s", ", ".join(self.cfg.languages))
 
@@ -223,8 +198,6 @@ class Daemon:
         return text
 
     def recognize(self, samples: np.ndarray, rate: int) -> str:
-        if self.granite:
-            return self.granite.transcribe(samples, rate, self.vocabulary.get().known())
         return (self.model.recognize(samples, sample_rate=rate) or "").strip()
 
     def second_pass(self, text: str) -> str:
@@ -306,14 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     # systemctl stop/restart sends SIGTERM. Turn it into the same clean exit
     # as ctrl+c so a stream muted mid-dictation gets unmuted.
     signal.signal(signal.SIGTERM, _raise_interrupt)
-    cfg = cfgmod.load()
-    if "--cuda" in argv:
-        cfg.device = "cuda"
-    if "--cpu" in argv:
-        cfg.device = "cpu"
-    if "--fp32" in argv:
-        cfg.quantization = ""
-    return Daemon(cfg).run()
+    return Daemon(cfgmod.load()).run()
 
 
 if __name__ == "__main__":

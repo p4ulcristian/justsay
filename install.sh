@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Install iris-dictation for the current user. Safe to run again.
-#
-#   ./install.sh          Whisper large-v3-turbo on an NVIDIA GPU (default)
-#   ./install.sh --cpu    Parakeet on the CPU: no GPU needed, no language lock
+# Needs an NVIDIA GPU with about 5 GB of free VRAM.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 SRC=$PWD
@@ -18,34 +16,10 @@ if [ ${#missing[@]} -gt 0 ]; then
   exit 1
 fi
 
-if [ "${1:-}" = "--cpu" ]; then
-  RUNTIME=cpu OTHER=onnxruntime-gpu
-else
-  RUNTIME=gpu OTHER=onnxruntime
-fi
-
 echo "Setting up the Python environment ..."
 [ -d .venv ] || uv venv -q --python 3.12 .venv
-# Both runtimes install the same onnxruntime module, so drop the other one
-# when switching between GPU and CPU.
-uv pip uninstall -q --python .venv/bin/python "$OTHER" 2>/dev/null || true
-uv pip install -q --python .venv/bin/python -r requirements.txt -r "requirements-$RUNTIME.txt"
-
-if [ "$RUNTIME" = cpu ]; then
-  ./bin/iris-dictation-fetch-model parakeet
-  mkdir -p ~/.config/iris-dictation
-  if [ ! -f ~/.config/iris-dictation/config.toml ]; then
-    cat > ~/.config/iris-dictation/config.toml <<'TOML'
-model = "nemo-parakeet-tdt-0.6b-v3"
-model_path = "~/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
-quantization = ""
-device = "cpu"
-TOML
-    echo "Wrote ~/.config/iris-dictation/config.toml for Parakeet on the CPU"
-  fi
-else
-  ./bin/iris-dictation-fetch-model whisper
-fi
+uv pip install -q --python .venv/bin/python -r requirements.txt
+./bin/iris-dictation-fetch-model
 
 mkdir -p ~/.local/bin ~/.config/systemd/user
 for b in iris-dictation-daemon iris-dictation iris-dictation-selftest iris-dictation-learn; do

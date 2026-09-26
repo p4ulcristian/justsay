@@ -1,4 +1,0 @@
-# engine = "granite": IBM Granite Speech through PyTorch + transformers.
-torch==2.14.0
-torchaudio==2.11.0
-transformers==5.17.0

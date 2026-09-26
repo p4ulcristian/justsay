@@ -27,45 +27,16 @@ def runtime_dir() -> Path:
 
 @dataclass
 class Config:
-    # Model. Whisper large-v3-turbo on the GPU: fast enough that a clip is
-    # done in a fraction of a second, and unlike Parakeet it can be held to
-    # the languages below, so a short clip is never misread as some other
-    # language.
-    # fp16 weights: same accuracy, half the size. Holds about 4 GB of VRAM
-    # while the daemon runs (6.4 GB with the fp32 build).
-    #
-    # To go back to Parakeet on the CPU (no language lock, no VRAM):
-    #   model = "nemo-parakeet-tdt-0.6b-v3"
-    #   model_path = "~/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
-    # (bin/iris-dictation-fetch-model parakeet if it is not there yet)
-    #   quantization = ""
-    #   device = "cpu"
-    # "whisper": the model below through onnx-asr (any language).
-    # "granite": IBM Granite Speech 4.1 2B through PyTorch, about a third
-    # fewer mistakes in English and your vocabulary as its keyword list, so
-    # names are heard right; English, French, German, Spanish, Portuguese
-    # and Japanese only, ~0.5 s per clip, ~4.6 GB VRAM. Needs
-    # requirements-granite.txt and the model:
-    #   hf download ibm-granite/granite-speech-4.1-2b --local-dir <granite_path>
-    engine: str = "whisper"
-    granite_path: str = "~/.local/share/iris-dictation/models/granite-speech-4.1-2b"
-
-    model: str = "onnx-community/whisper-large-v3-turbo"
-    quantization: str = "fp16"
-    # Local directory holding the ONNX files, filled by bin/iris-dictation-fetch-model.
-    # Needed because onnxruntime refuses to follow the Hugging Face cache
-    # symlinks to the separate weights file. Empty means download from
-    # Hugging Face, which only works for models without one (int8 builds).
-    model_path: str = "~/.local/share/iris-dictation/models/whisper-large-v3-turbo"
-    # "cuda" or "cpu".
-    device: str = "cuda"
-    # Threads for onnxruntime on the CPU. Physical core count works best.
-    threads: int = 6
-    # Whisper only: the languages it may pick from, as Whisper codes, e.g.
-    # ["hu", "en"]. It detects which one you are speaking, but only among
-    # these, which stops short clips being read as a third language. One
-    # entry forces that language. Empty means any of Whisper's 99. Parakeet
-    # has no language setting and ignores this.
+    # The model is Whisper large-v3 in fp16 on an NVIDIA GPU: about 0.2-0.4 s
+    # per clip and ~5 GB of VRAM while the daemon runs. This is the directory
+    # holding its ONNX files, filled by bin/iris-dictation-fetch-model. (A
+    # plain directory, because onnxruntime will not follow the Hugging Face
+    # cache's symlinks to the weights.)
+    model_path: str = "~/.local/share/iris-dictation/models/whisper-large-v3"
+    # The languages Whisper may pick from, as Whisper codes, e.g. ["hu", "en"].
+    # It detects which one you are speaking, but only among these, which
+    # stops short clips being read as a third language. One entry forces that
+    # language. Empty means any of Whisper's 99.
     languages: list[str] = field(default_factory=list)
 
     # Key to hold, as an evdev KEY_* name.
