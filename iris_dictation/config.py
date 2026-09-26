@@ -40,6 +40,16 @@ class Config:
     # (bin/iris-dictation-fetch-model parakeet if it is not there yet)
     #   quantization = ""
     #   device = "cpu"
+    # "whisper": the model below through onnx-asr (any language).
+    # "granite": IBM Granite Speech 4.1 2B through PyTorch, about a third
+    # fewer mistakes in English and your vocabulary as its keyword list, so
+    # names are heard right; English, French, German, Spanish, Portuguese
+    # and Japanese only, ~0.5 s per clip, ~4.6 GB VRAM. Needs
+    # requirements-granite.txt and the model:
+    #   hf download ibm-granite/granite-speech-4.1-2b --local-dir <granite_path>
+    engine: str = "whisper"
+    granite_path: str = "~/.local/share/iris-dictation/models/granite-speech-4.1-2b"
+
     model: str = "onnx-community/whisper-large-v3-turbo"
     quantization: str = "fp16"
     # Local directory holding the ONNX files, filled by bin/iris-dictation-fetch-model.

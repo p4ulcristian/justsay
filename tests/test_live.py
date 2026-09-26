@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from iris_dictation import ctl
+from iris_dictation import config, ctl
 
 CLIPS = Path(__file__).parent.parent / "testwav"
 # Words that must come through (see testwav/SOURCES.md).
@@ -29,6 +29,8 @@ pytestmark = pytest.mark.skipif(not daemon_running(), reason="daemon not running
 
 @pytest.mark.parametrize("clip", sorted(EXPECTED))
 def test_clip(clip):
+    if clip.endswith("_hu.wav") and config.load().engine == "granite":
+        pytest.skip("Granite Speech has no Hungarian")
     text = ctl.send(f"transcribe {CLIPS / clip}").lower()
     for word in EXPECTED[clip]:
         assert re.search(word, text), f"{word!r} not in {text!r}"

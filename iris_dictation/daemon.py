@@ -74,7 +74,8 @@ class Daemon:
             self.recorder = Recorder(cfg.sample_rate, cfg.max_seconds,
                                      cfg.audio_source)
         self.muter = StreamMuter(cfg.mute_apps)
-        self.model = None
+        self.model = None       # Whisper / Parakeet through onnx-asr
+        self.granite = None     # or Granite Speech (engine = "granite")
         self.levels = LevelServer(str(cfgmod.runtime_dir() / LEVELS_SOCKET))
         self.recorder.listener = lambda chunk: self.levels.send(f"level {audio.level(chunk):.3f}")
 
@@ -87,6 +88,13 @@ class Daemon:
         self.levels.send(state)
 
     def load_model(self) -> None:
+        if self.cfg.engine == "granite":
+            from .granite import Granite
+            self.granite = Granite(os.path.expanduser(self.cfg.granite_path))
+            t0 = time.time()
+            self.recognize(np.zeros(self.cfg.sample_rate, dtype=np.float32), self.cfg.sample_rate)
+            log.info("warmup %.2fs", time.time() - t0)
+            return
         import onnx_asr
 
         t0 = time.time()
@@ -184,7 +192,7 @@ class Daemon:
         seconds = len(samples) / rate
         t0 = time.time()
         try:
-            text = (self.model.recognize(samples, sample_rate=rate) or "").strip()
+            text = self.recognize(samples, rate)
         except Exception as exc:
             log.exception("transcription failed")
             self.set_state("idle")
@@ -213,6 +221,11 @@ class Daemon:
             self.deliver(text)
         self.set_state("idle")
         return text
+
+    def recognize(self, samples: np.ndarray, rate: int) -> str:
+        if self.granite:
+            return self.granite.transcribe(samples, rate, self.vocabulary.get().known())
+        return (self.model.recognize(samples, sample_rate=rate) or "").strip()
 
     def second_pass(self, text: str) -> str:
         """Taught mishearings (always), then the model (when configured)."""

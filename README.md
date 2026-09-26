@@ -97,6 +97,25 @@ journalctl --user -u iris-dictation -f
 iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
 ```
 
+## Granite Speech instead of Whisper (optional)
+
+IBM Granite Speech 4.1 2B makes about a third fewer mistakes than Whisper
+turbo in English (Open ASR Leaderboard: 5.33% vs 7.83% word error rate) and
+takes your vocabulary as a keyword list, so names are heard right in the
+first place. English, French, German, Spanish, Portuguese and Japanese only;
+about 0.5 s per clip and 4.6 GB of VRAM on an RTX 5060 Ti.
+
+```sh
+uv pip install --python .venv/bin/python -r requirements-granite.txt
+.venv/bin/hf download ibm-granite/granite-speech-4.1-2b \
+    --local-dir ~/.local/share/iris-dictation/models/granite-speech-4.1-2b
+```
+
+```toml
+# ~/.config/iris-dictation/config.toml
+engine = "granite"
+```
+
 ## Second pass: your words, no "um"s
 
 Optional. A small local language model reads what Whisper wrote before it
