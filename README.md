@@ -108,7 +108,6 @@ mute_apps = ["discord", "vesktop", "webcord"]   # add "chromium" for Discord in 
 trailing_space = true
 preroll_ms = 0              # >0 keeps the mic open to catch the first syllable
 audio_source = ""           # a PipeWire source name; "" = default mic
-# audio_source = ["phone_mic", "alsa_input.usb-..."]   # the first one there at key press
 ```
 
 **Noise-suppressed mic?** If your default input is a filtered virtual mic
