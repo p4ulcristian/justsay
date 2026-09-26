@@ -255,6 +255,15 @@ class ControlServer(threading.Thread):
                     pass
         srv.close()
 
+    def ask(self, kind: str, *args) -> str:
+        """Queue an event and wait for the transcript it produces."""
+        box: queue.Queue = queue.Queue()
+        self.events.put((kind, *args, box))
+        try:
+            return box.get(timeout=60)
+        except queue.Empty:
+            return ""
+
     def handle(self, cmd: str) -> str:
         verb, _, arg = cmd.partition(" ")
         if verb == "start":
@@ -266,20 +275,16 @@ class ControlServer(threading.Thread):
         if verb == "stop-return":
             # Stop and hand the transcript back on this socket instead of typing
             # it (omarchy-controller sends it to Iris). Empty reply = nothing heard.
-            box: queue.Queue = queue.Queue()
-            self.events.put(("up-return", box))
-            try:
-                return box.get(timeout=60)
-            except queue.Empty:
-                return ""
+            return self.ask("up-return")
         if verb == "toggle":
             self.events.put("up" if self.status() == "recording" else "down")
             return "ok"
         if verb == "status":
             return self.status()
         if verb == "transcribe":
-            self.events.put(("file", arg.strip()))
-            return "ok"
+            # Replies with the text instead of typing it, so tests and scripts
+            # can check what was heard.
+            return self.ask("file", arg.strip())
         if verb == "ping":
             return "pong"
         if verb == "quit":
@@ -436,19 +441,24 @@ class Daemon:
         if method == "clipboard" and self.cfg.output != "clipboard":
             notify("Dictation: on clipboard", "Could not type it, press ctrl+v", timeout=4000)
 
-    def on_file(self, path: str) -> None:
+    def on_file(self, path: str, box: queue.Queue) -> None:
         """Transcribe a wav from disk. Used for testing the pipeline."""
         import wave
 
-        with wave.open(path) as w:
-            rate = w.getframerate()
-            raw = w.readframes(w.getnframes())
+        try:
+            with wave.open(path) as w:
+                rate = w.getframerate()
+                raw = w.readframes(w.getnframes())
+        except (OSError, wave.Error) as exc:
+            log.warning("cannot read %s: %s", path, exc)
+            box.put("")
+            return
         samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
         seconds = len(samples) / rate
         self.set_state("transcribing")
         saved, self.cfg.sample_rate = self.cfg.sample_rate, rate
         try:
-            self.finish(samples, seconds)
+            self.finish(samples, seconds, box)
         finally:
             self.cfg.sample_rate = saved
 
@@ -497,7 +507,7 @@ class Daemon:
                 elif isinstance(event, tuple) and event[0] == "up-return":
                     self.on_up(event[1])
                 elif isinstance(event, tuple) and event[0] == "file":
-                    self.on_file(event[1])
+                    self.on_file(event[1], event[2])
         except KeyboardInterrupt:
             pass
         finally:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 
@@ -15,7 +16,7 @@ USAGE = """usage: iris-dictation <command>
   stop-return  stop recording, transcribe, reply with the text instead of pasting
   toggle       start if idle, stop if recording
   status       print idle | recording | transcribing
-  transcribe <file.wav>   run a wav through the pipeline
+  transcribe <file.wav>   run a wav through the pipeline, print the text
   ping         check the daemon is alive
   quit         shut the daemon down
 """
@@ -42,8 +43,12 @@ def main() -> int:
     if len(sys.argv) < 2:
         print(USAGE, end="")
         return 1
+    args = sys.argv[1:]
+    if args[0] == "transcribe" and len(args) > 1:
+        # The daemon has its own working directory.
+        args[1:] = [os.path.abspath(" ".join(args[1:]))]
     try:
-        print(send(" ".join(sys.argv[1:])))
+        print(send(" ".join(args)))
     except FileNotFoundError:
         print("iris-dictation daemon is not running", file=sys.stderr)
         return 1

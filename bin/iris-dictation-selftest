@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Run the sample clips through the running daemon and print what it heard.
-# The text is delivered to whatever window is focused, so focus something
-# harmless first, or run: iris-dictation status
+# Nothing is typed; the overlay shows each result.
 set -u
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")" || exit 1
 
@@ -12,9 +11,7 @@ fi
 
 for wav in testwav/*.wav; do
   echo "--- $wav"
-  ./bin/iris-dictation transcribe "$(readlink -f "$wav")" >/dev/null
-  sleep 3
+  ./bin/iris-dictation transcribe "$wav"
 done
 echo
-echo "What the daemon heard (from the journal):"
-journalctl --user -u iris-dictation -n 40 --no-pager -o cat | grep -- "-> " | tail -10
+echo "Expected text: testwav/SOURCES.md"
