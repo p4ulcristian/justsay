@@ -1,0 +1,11 @@
+# Tool settings only. iris-dictation is installed with install.sh, not pip.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

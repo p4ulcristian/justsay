@@ -1,0 +1,2 @@
+# onnxruntime-gpu brings its own CUDA and cuDNN from pip; nothing system wide.
+onnxruntime-gpu[cuda,cudnn]==1.30.0

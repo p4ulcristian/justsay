@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import logging
 import os
+import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-
-import tomllib
 
 log = logging.getLogger("iris-dictation")
 

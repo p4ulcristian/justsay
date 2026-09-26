@@ -26,7 +26,8 @@ def restrict(model, languages: list[str]) -> None:
     if len(languages) == 1:
         # One language: plain forcing, no detection pass at all.
         original = asr.recognize_batch
-        asr.recognize_batch = lambda w, wl, /, **kw: original(w, wl, **{**kw, "language": languages[0]})
+        asr.recognize_batch = lambda w, wl, /, **kw: original(
+            w, wl, **{**kw, "language": languages[0]})
         return
 
     ids = np.array([asr._tokens[f"<|{lang}|>"] for lang in languages])

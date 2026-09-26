@@ -18,11 +18,20 @@ if [ ${#missing[@]} -gt 0 ]; then
   exit 1
 fi
 
+if [ "${1:-}" = "--cpu" ]; then
+  RUNTIME=cpu OTHER=onnxruntime-gpu
+else
+  RUNTIME=gpu OTHER=onnxruntime
+fi
+
 echo "Setting up the Python environment ..."
 [ -d .venv ] || uv venv -q --python 3.12 .venv
-uv pip install -q --python .venv/bin/python -r requirements.txt
+# Both runtimes install the same onnxruntime module, so drop the other one
+# when switching between GPU and CPU.
+uv pip uninstall -q --python .venv/bin/python "$OTHER" 2>/dev/null || true
+uv pip install -q --python .venv/bin/python -r requirements.txt -r "requirements-$RUNTIME.txt"
 
-if [ "${1:-}" = "--cpu" ]; then
+if [ "$RUNTIME" = cpu ]; then
   ./bin/iris-dictation-fetch-model parakeet
   mkdir -p ~/.config/iris-dictation
   if [ ! -f ~/.config/iris-dictation/config.toml ]; then

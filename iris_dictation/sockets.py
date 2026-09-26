@@ -8,7 +8,7 @@ import os
 import queue
 import socket
 import threading
-from typing import Callable
+from collections.abc import Callable
 
 SOCKET_NAME = "iris-dictation.sock"
 LEVELS_SOCKET = "levels.sock"   # live state + voice level for the waveform overlay
