@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "id": "p4ulcristian.justsay-wave",
+  "id": "p4ulcristian.iris-dictation",
   "name": "Dictation waveform",
   "version": "1.0.0",
   "author": "p4ulcristian",
-  "description": "Live voice waveform while justsay records, then the transcribed text. Driven by justsay's levels.sock.",
+  "description": "Live voice waveform while iris-dictation records, then the transcribed text. Driven by iris-dictation's levels.sock.",
   "kinds": [
     "panel"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "panel": "JustsayWave.qml"
+    "panel": "DictationWave.qml"
   }
 }

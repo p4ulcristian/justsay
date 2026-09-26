@@ -1,7 +1,7 @@
 """Mute other apps' microphone streams while dictating.
 
 So the people in a Discord call do not hear what you dictate. This mutes the
-app's capture stream in PipeWire, not the microphone itself, so justsay still
+app's capture stream in PipeWire, not the microphone itself, so iris-dictation still
 records. The app's own mute icon does not change; it just receives silence.
 
 Only streams this module muted are unmuted again, so a stream you had muted
@@ -14,7 +14,7 @@ import json
 import logging
 import subprocess
 
-log = logging.getLogger("justsay")
+log = logging.getLogger("iris-dictation")
 
 
 def _pactl(*args: str) -> str:

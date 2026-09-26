@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 # Control the running dictation daemon.
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")" || exit 1
-exec .venv/bin/python -m justsay.ctl "$@"
+exec .venv/bin/python -m iris_dictation.ctl "$@"

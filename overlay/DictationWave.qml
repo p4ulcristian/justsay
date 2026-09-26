@@ -6,9 +6,9 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// Dictation overlay for the Omarchy shell. justsay broadcasts its state and the
-// live voice level on $XDG_RUNTIME_DIR/justsay/levels.sock (see LevelServer in
-// justsay/daemon.py), one line per event:
+// Dictation overlay for the Omarchy shell. iris-dictation broadcasts its state and the
+// live voice level on $XDG_RUNTIME_DIR/iris-dictation/levels.sock (see LevelServer in
+// iris_dictation/daemon.py), one line per event:
 //   recording | level 0.42 | transcribing | text <result> | typing <chars> | nothing | idle
 // While recording, three tapered neon sine waves swell with the voice and a dot
 // pulses. While waiting (transcribing, then typing the text out) the waves run
@@ -19,12 +19,12 @@ Item {
 
   property string mode: "hidden"      // hidden | recording | transcribing | result
   property string result: ""
-  property real target: 0             // latest level from justsay, 0..1
+  property real target: 0             // latest level from iris-dictation, 0..1
   property real amp: 0                // smoothed level the waves draw with
   property real phase: 0
   property real typed: 0              // 0..1, typing progress bar
   property bool typing: false
-  // Waiting on justsay (transcribing, then typing a long result): the waves
+  // Waiting on iris-dictation (transcribing, then typing a long result): the waves
   // run edge to edge on their own instead of following the voice.
   readonly property bool loading: mode === "transcribing" || (mode === "result" && typing)
 
@@ -57,7 +57,7 @@ Item {
       root.target = 0
       root.mode = "transcribing"
     } else if (verb === "text") {
-      // Stays up until justsay says idle, however long the typing takes.
+      // Stays up until iris-dictation says idle, however long the typing takes.
       root.result = arg
       root.typing = false
       typedAnim.stop()
@@ -103,10 +103,10 @@ Item {
 
   Socket {
     id: levels
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/justsay/levels.sock"
+    path: Quickshell.env("XDG_RUNTIME_DIR") + "/iris-dictation/levels.sock"
     connected: true
     parser: SplitParser { onRead: data => root.handle(data) }
-    // justsay restarts (or starts after the shell): keep knocking.
+    // iris-dictation restarts (or starts after the shell): keep knocking.
     onConnectedChanged: if (!connected) reconnect.start()
   }
 
@@ -137,7 +137,7 @@ Item {
     implicitWidth: root.pillW + 12
     implicitHeight: root.pillH + 12
     color: "transparent"
-    WlrLayershell.namespace: "justsay-wave"
+    WlrLayershell.namespace: "iris-dictation"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     // Sit below the bar rather than over it.

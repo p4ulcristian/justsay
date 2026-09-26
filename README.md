@@ -4,7 +4,7 @@ Push-to-talk dictation for Hyprland. Hold Caps Lock, speak, let go, and the
 text is typed into whatever window is focused. Everything runs locally: no
 cloud, no account.
 
-The program itself is called **justsay**: `justsayctl`, `justsay.service`.
+The program itself is called **iris-dictation**: `iris-dictation`, `iris-dictation.service`.
 
 - **Fast.** Whisper large-v3-turbo on the GPU transcribes a 4–16 second clip
   in 120–180 ms, measured on an RTX 5060 Ti. The model stays loaded, so a
@@ -18,7 +18,7 @@ The program itself is called **justsay**: `justsayctl`, `justsay.service`.
   muted, so your call doesn't hear what you dictate.
 - **Waveform overlay** on Omarchy: a live voice meter while you talk, then
   the text it heard.
-- **Scriptable.** `justsayctl start`/`stop` from anything, plus
+- **Scriptable.** `iris-dictation start`/`stop` from anything, plus
   `stop-return`, which hands the transcript back instead of typing it.
   [omarchy-controller](https://github.com/p4ulcristian/omarchy-controller)
   uses these for hold-R1-to-dictate on a DualSense.
@@ -39,21 +39,21 @@ sudo pacman -S uv wtype wl-clipboard libpulse libnotify
 ## Install
 
 ```sh
-git clone https://github.com/p4ulcristian/omarchy-dictation ~/.local/share/justsay
-~/.local/share/justsay/install.sh          # or: install.sh --cpu
+git clone https://github.com/p4ulcristian/omarchy-dictation ~/.local/share/omarchy-dictation
+~/.local/share/omarchy-dictation/install.sh          # or: install.sh --cpu
 ```
 
 The installer creates a Python environment inside the clone, downloads the
-model (about 1.6 GB) to `~/.local/share/justsay/models/`, links
-`justsayctl` and friends into `~/.local/bin`, adds the waveform overlay to
-the Omarchy shell if there is one, and starts the `justsay` systemd user
+model (about 1.6 GB) to `~/.local/share/iris-dictation/models/`, links
+`iris-dictation` and friends into `~/.local/bin`, adds the waveform overlay to
+the Omarchy shell if there is one, and starts the `iris-dictation` systemd user
 service.
 
 Then free up Caps Lock (next section) and try it.
 
 ## Freeing Caps Lock
 
-justsay reads Caps Lock straight from the keyboard (evdev), so it works
+iris-dictation reads Caps Lock straight from the keyboard (evdev), so it works
 whatever the key is mapped to. But if Caps Lock still toggles caps, or is
 your Compose key (Omarchy's default), it will also do that every time you
 dictate, and a half-typed Compose sequence swallows the first letters.
@@ -70,7 +70,7 @@ hl.config({
 })
 ```
 
-Nothing but justsay sees Caps Lock after that, games included. Prefer another
+Nothing but iris-dictation sees Caps Lock after that, games included. Prefer another
 key? Set `key = "KEY_RIGHTALT"` (any evdev `KEY_*` name) in the config
 instead and leave Caps Lock alone.
 
@@ -83,24 +83,24 @@ again.
 Hold the key, speak, release. From scripts or other tools:
 
 ```sh
-justsayctl start          # begin recording
-justsayctl stop           # stop, transcribe, type
-justsayctl stop-return    # stop, transcribe, print the text instead of typing
-justsayctl toggle
-justsayctl status         # idle | recording | transcribing
-justsayctl transcribe some.wav
+iris-dictation start          # begin recording
+iris-dictation stop           # stop, transcribe, type
+iris-dictation stop-return    # stop, transcribe, print the text instead of typing
+iris-dictation toggle
+iris-dictation status         # idle | recording | transcribing
+iris-dictation transcribe some.wav
 ```
 
 ```sh
-systemctl --user restart justsay
-journalctl --user -u justsay -f
-justsay-daemon --debug    # run in a terminal instead (stop the service first)
+systemctl --user restart iris-dictation
+journalctl --user -u iris-dictation -f
+iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
 ```
 
 ## Config
 
-Optional: `~/.config/justsay/config.toml`. Every setting and its default is
-documented in [`justsay/config.py`](justsay/config.py). The common ones:
+Optional: `~/.config/iris-dictation/config.toml`. Every setting and its default is
+documented in [`iris_dictation/config.py`](iris_dictation/config.py). The common ones:
 
 ```toml
 languages = ["hu", "en"]    # pick only among these; [] = any of 99
@@ -119,17 +119,17 @@ A resident daemon owns the microphone, the key and the model:
 
 1. **Key down:** `parec` starts recording from PipeWire, and apps in
    `mute_apps` get their capture stream muted. The mic itself stays on for
-   justsay.
+   iris-dictation.
 2. **Key up:** the clip goes through Whisper (onnxruntime, CUDA, fp16). The
    language is picked from `languages` only, by a small patch over onnx-asr's
-   Whisper language detection (`justsay/languages.py`). This reaches into
+   Whisper language detection (`iris_dictation/languages.py`). This reaches into
    onnx-asr internals, so the version is pinned in `requirements.txt`.
 3. The text is cleaned up: Whisper's hallucinated "Thank you." on silent
    clips is dropped, and short results are tidied. Then `wtype` types it into
    the focused window. If typing fails, it goes on the clipboard with a
    notification, so a transcription is never lost.
 
-The waveform overlay listens on `$XDG_RUNTIME_DIR/justsay/levels.sock`, one
+The waveform overlay listens on `$XDG_RUNTIME_DIR/iris-dictation/levels.sock`, one
 line per event: `recording`, `level 0.42`, `transcribing`, `text …`, `idle`.
 
 ### Models
@@ -145,20 +145,20 @@ Parakeet is faster but guesses the language on its own, and on short clips
 it sometimes guesses wrong. Whisper was also slightly more accurate on the
 English test clips.
 
-`justsay-selftest` runs the clips in `testwav/` through the running daemon.
+`iris-dictation-selftest` runs the clips in `testwav/` through the running daemon.
 They are typed into the focused window, so focus something harmless first.
 
 ## Uninstall
 
 ```sh
-systemctl --user disable --now justsay
-rm ~/.config/systemd/user/justsay.service ~/.local/bin/justsay-daemon \
-   ~/.local/bin/justsayctl ~/.local/bin/justsay-selftest
-rm ~/.config/omarchy/plugins/p4ulcristian.justsay-wave   # Omarchy only
-rm -rf ~/.local/share/justsay ~/.config/justsay          # the clone, models and config
+systemctl --user disable --now iris-dictation
+rm ~/.config/systemd/user/iris-dictation.service ~/.local/bin/iris-dictation-daemon \
+   ~/.local/bin/iris-dictation ~/.local/bin/iris-dictation-selftest
+rm ~/.config/omarchy/plugins/p4ulcristian.iris-dictation   # Omarchy only
+rm -rf ~/.local/share/omarchy-dictation ~/.local/share/iris-dictation ~/.config/iris-dictation   # clone, models, config
 ```
 
-On Omarchy, also remove `p4ulcristian.justsay-wave` from the `plugins` list
+On Omarchy, also remove `p4ulcristian.iris-dictation` from the `plugins` list
 in `~/.config/omarchy/shell.json`.
 
 ## License

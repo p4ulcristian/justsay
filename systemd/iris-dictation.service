@@ -1,11 +1,11 @@
 [Unit]
-Description=justsay - push to talk dictation
+Description=iris-dictation - push to talk dictation
 After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/justsay-daemon
+ExecStart=%h/.local/bin/iris-dictation-daemon
 Restart=on-failure
 RestartSec=3
 

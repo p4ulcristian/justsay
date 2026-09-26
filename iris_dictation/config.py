@@ -1,6 +1,6 @@
-"""Configuration for the justsay daemon.
+"""Configuration for the iris-dictation daemon.
 
-Everything is overridable from ~/.config/justsay/config.toml.
+Everything is overridable from ~/.config/iris-dictation/config.toml.
 """
 
 from __future__ import annotations
@@ -12,12 +12,12 @@ from pathlib import Path
 
 CONFIG_PATH = Path(
     os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
-) / "justsay" / "config.toml"
+) / "iris-dictation" / "config.toml"
 
 
 def runtime_dir() -> Path:
     base = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
-    d = Path(base) / "justsay"
+    d = Path(base) / "iris-dictation"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -33,17 +33,17 @@ class Config:
     #
     # To go back to Parakeet on the CPU (no language lock, no VRAM):
     #   model = "nemo-parakeet-tdt-0.6b-v3"
-    #   model_path = "~/.local/share/justsay/models/parakeet-tdt-0.6b-v3"
-    # (bin/justsay-fetch-model parakeet if it is not there yet)
+    #   model_path = "~/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
+    # (bin/iris-dictation-fetch-model parakeet if it is not there yet)
     #   quantization = ""
     #   device = "cpu"
     model: str = "onnx-community/whisper-large-v3-turbo"
     quantization: str = "fp16"
-    # Local directory holding the ONNX files, filled by bin/justsay-fetch-model.
+    # Local directory holding the ONNX files, filled by bin/iris-dictation-fetch-model.
     # Needed because onnxruntime refuses to follow the Hugging Face cache
     # symlinks to the separate weights file. Empty means download from
     # Hugging Face, which only works for models without one (int8 builds).
-    model_path: str = "~/.local/share/justsay/models/whisper-large-v3-turbo"
+    model_path: str = "~/.local/share/iris-dictation/models/whisper-large-v3-turbo"
     # "cuda" or "cpu".
     device: str = "cuda"
     # Threads for onnxruntime on the CPU. Physical core count works best.

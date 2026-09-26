@@ -41,7 +41,7 @@ class Recorder:
             f"--rate={self.sample_rate}",
             "--channels=1",
             "--latency-msec=20",
-            "--client-name=justsay",
+            "--client-name=iris-dictation",
         ]
         if self.source:
             cmd.append(f"--device={self.source}")
@@ -124,7 +124,7 @@ class HotRecorder:
             return
         cmd = [
             "parec", "--format=s16le", f"--rate={self.sample_rate}",
-            "--channels=1", "--latency-msec=20", "--client-name=justsay",
+            "--channels=1", "--latency-msec=20", "--client-name=iris-dictation",
         ]
         if self.source:
             cmd.append(f"--device={self.source}")

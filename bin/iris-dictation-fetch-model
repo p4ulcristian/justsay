@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Download a speech model into ~/.local/share/justsay/models.
+# Download a speech model into ~/.local/share/iris-dictation/models.
 #
-#   justsay-fetch-model            Whisper large-v3-turbo fp16 (the default model)
-#   justsay-fetch-model parakeet   Parakeet TDT 0.6B v3
+#   iris-dictation-fetch-model            Whisper large-v3-turbo fp16 (the default model)
+#   iris-dictation-fetch-model parakeet   Parakeet TDT 0.6B v3
 #
 # onnxruntime refuses to follow the Hugging Face cache symlinks to a separate
 # weights file, so the files are copied into a plain directory rather than
@@ -13,13 +13,13 @@ cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 case "${1:-whisper}" in
   whisper)
     REPO="onnx-community/whisper-large-v3-turbo"
-    DEST="$HOME/.local/share/justsay/models/whisper-large-v3-turbo"
+    DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3-turbo"
     FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
            vocab.json added_tokens.json config.json"
     ;;
   parakeet)
     REPO="istupakov/parakeet-tdt-0.6b-v3-onnx"
-    DEST="$HOME/.local/share/justsay/models/parakeet-tdt-0.6b-v3"
+    DEST="$HOME/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
     FILES="encoder-model.onnx encoder-model.onnx.data decoder_joint-model.onnx
            nemo128.onnx vocab.txt config.json"
     ;;

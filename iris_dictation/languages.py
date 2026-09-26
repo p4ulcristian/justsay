@@ -14,7 +14,7 @@ import logging
 
 import numpy as np
 
-log = logging.getLogger("justsay")
+log = logging.getLogger("iris-dictation")
 
 
 def restrict(model, languages: list[str]) -> None:

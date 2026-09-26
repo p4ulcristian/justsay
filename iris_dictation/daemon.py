@@ -29,11 +29,11 @@ from . import output as out
 from .audio import HotRecorder, Recorder
 from .mute import StreamMuter
 
-log = logging.getLogger("justsay")
+log = logging.getLogger("iris-dictation")
 
-SOCKET_NAME = "justsay.sock"
+SOCKET_NAME = "iris-dictation.sock"
 LEVELS_SOCKET = "levels.sock"   # live state + voice level for the waveform overlay
-NOTIFY_TAG = "justsay-status"
+NOTIFY_TAG = "iris-dictation-status"
 
 
 def notify(summary: str, body: str = "", timeout: int = 2000) -> None:
@@ -42,7 +42,7 @@ def notify(summary: str, body: str = "", timeout: int = 2000) -> None:
         subprocess.Popen(
             [
                 "notify-send",
-                "-a", "justsay",
+                "-a", "iris-dictation",
                 "-t", str(timeout),
                 "-h", f"string:x-canonical-private-synchronous:{NOTIFY_TAG}",
                 "-h", f"string:x-dunst-stack-tag:{NOTIFY_TAG}",
@@ -216,7 +216,7 @@ class KeyWatcher(threading.Thread):
 
 
 class ControlServer(threading.Thread):
-    """Unix socket so justsayctl can drive the same state machine."""
+    """Unix socket so iris-dictation can drive the same state machine."""
 
     def __init__(self, path: str, events: queue.Queue, status) -> None:
         super().__init__(daemon=True)
@@ -375,7 +375,7 @@ class Daemon:
             self.muter.restore()
             self.set_state("idle")
             if self.cfg.notify:
-                notify("Justsay error", str(exc))
+                notify("Dictation error", str(exc))
 
     def on_up(self, box: queue.Queue | None = None) -> None:
         if self.state != "recording":
@@ -404,7 +404,7 @@ class Daemon:
         except Exception as exc:
             log.exception("transcription failed")
             self.set_state("idle")
-            notify("Justsay error", str(exc), timeout=4000)
+            notify("Dictation error", str(exc), timeout=4000)
             if box:
                 box.put("")
             return
@@ -434,7 +434,7 @@ class Daemon:
         method = out.deliver(payload, self.cfg.output, self.cfg.output_fallback)
         self.set_state("idle")
         if method == "clipboard" and self.cfg.output != "clipboard":
-            notify("Justsay: on clipboard", "Could not type it, press ctrl+v", timeout=4000)
+            notify("Dictation: on clipboard", "Could not type it, press ctrl+v", timeout=4000)
 
     def on_file(self, path: str) -> None:
         """Transcribe a wav from disk. Used for testing the pipeline."""

@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # Run the sample clips through the running daemon and print what it heard.
 # The text is delivered to whatever window is focused, so focus something
-# harmless first, or run: justsayctl status
+# harmless first, or run: iris-dictation status
 set -u
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")" || exit 1
 
-if ! ./bin/justsayctl ping >/dev/null 2>&1; then
-  echo "daemon is not running: systemctl --user start justsay" >&2
+if ! ./bin/iris-dictation ping >/dev/null 2>&1; then
+  echo "daemon is not running: systemctl --user start iris-dictation" >&2
   exit 1
 fi
 
 for wav in testwav/*.wav; do
   echo "--- $wav"
-  ./bin/justsayctl transcribe "$(readlink -f "$wav")" >/dev/null
+  ./bin/iris-dictation transcribe "$(readlink -f "$wav")" >/dev/null
   sleep 3
 done
 echo
 echo "What the daemon heard (from the journal):"
-journalctl --user -u justsay -n 40 --no-pager -o cat | grep -- "-> " | tail -10
+journalctl --user -u iris-dictation -n 40 --no-pager -o cat | grep -- "-> " | tail -10

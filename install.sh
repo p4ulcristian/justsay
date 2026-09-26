@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Install justsay for the current user. Safe to run again.
+# Install iris-dictation for the current user. Safe to run again.
 #
 #   ./install.sh          Whisper large-v3-turbo on an NVIDIA GPU (default)
 #   ./install.sh --cpu    Parakeet on the CPU: no GPU needed, no language lock
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 SRC=$PWD
-PLUGIN=p4ulcristian.justsay-wave
+PLUGIN=p4ulcristian.iris-dictation
 
 missing=()
 for tool in uv wtype wl-copy parec pactl notify-send; do
@@ -23,23 +23,23 @@ echo "Setting up the Python environment ..."
 uv pip install -q --python .venv/bin/python -r requirements.txt
 
 if [ "${1:-}" = "--cpu" ]; then
-  ./bin/justsay-fetch-model parakeet
-  mkdir -p ~/.config/justsay
-  if [ ! -f ~/.config/justsay/config.toml ]; then
-    cat > ~/.config/justsay/config.toml <<'TOML'
+  ./bin/iris-dictation-fetch-model parakeet
+  mkdir -p ~/.config/iris-dictation
+  if [ ! -f ~/.config/iris-dictation/config.toml ]; then
+    cat > ~/.config/iris-dictation/config.toml <<'TOML'
 model = "nemo-parakeet-tdt-0.6b-v3"
-model_path = "~/.local/share/justsay/models/parakeet-tdt-0.6b-v3"
+model_path = "~/.local/share/iris-dictation/models/parakeet-tdt-0.6b-v3"
 quantization = ""
 device = "cpu"
 TOML
-    echo "Wrote ~/.config/justsay/config.toml for Parakeet on the CPU"
+    echo "Wrote ~/.config/iris-dictation/config.toml for Parakeet on the CPU"
   fi
 else
-  ./bin/justsay-fetch-model whisper
+  ./bin/iris-dictation-fetch-model whisper
 fi
 
 mkdir -p ~/.local/bin ~/.config/systemd/user
-for b in justsay-daemon justsayctl justsay-selftest; do
+for b in iris-dictation-daemon iris-dictation iris-dictation-selftest; do
   ln -sfn "$SRC/bin/$b" ~/.local/bin/$b
 done
 
@@ -65,10 +65,10 @@ PY
   command -v omarchy-shell >/dev/null && omarchy-shell -q shell rescanPlugins || true
 fi
 
-cp systemd/justsay.service ~/.config/systemd/user/
+cp systemd/iris-dictation.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now justsay
-systemctl --user restart justsay
+systemctl --user enable --now iris-dictation
+systemctl --user restart iris-dictation
 echo
-echo "Installed. Logs: journalctl --user -u justsay -f"
+echo "Installed. Logs: journalctl --user -u iris-dictation -f"
 echo "Caps Lock still does its normal job until you free it; see README, 'Freeing Caps Lock'."

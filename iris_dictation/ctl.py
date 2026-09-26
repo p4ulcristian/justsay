@@ -1,4 +1,4 @@
-"""justsayctl: talk to the running daemon."""
+"""iris-dictation: talk to the running daemon."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 from . import config as cfgmod
 from .daemon import SOCKET_NAME
 
-USAGE = """usage: justsayctl <command>
+USAGE = """usage: iris-dictation <command>
 
   start        begin recording
   stop         stop recording, transcribe, paste
@@ -45,7 +45,7 @@ def main() -> int:
     try:
         print(send(" ".join(sys.argv[1:])))
     except FileNotFoundError:
-        print("justsay daemon is not running", file=sys.stderr)
+        print("iris-dictation daemon is not running", file=sys.stderr)
         return 1
     except ConnectionRefusedError:
         print("stale socket, daemon is not running", file=sys.stderr)
