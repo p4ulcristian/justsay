@@ -1,8 +1,10 @@
-# justsay
+# omarchy-dictation
 
 Push-to-talk dictation for Hyprland. Hold Caps Lock, speak, let go, and the
 text is typed into whatever window is focused. Everything runs locally: no
 cloud, no account.
+
+The program itself is called **justsay**: `justsayctl`, `justsay.service`.
 
 - **Fast.** Whisper large-v3-turbo on the GPU transcribes a 4–16 second clip
   in 120–180 ms, measured on an RTX 5060 Ti. The model stays loaded, so a
@@ -37,7 +39,7 @@ sudo pacman -S uv wtype wl-clipboard libpulse libnotify
 ## Install
 
 ```sh
-git clone https://github.com/p4ulcristian/justsay ~/.local/share/justsay
+git clone https://github.com/p4ulcristian/omarchy-dictation ~/.local/share/justsay
 ~/.local/share/justsay/install.sh          # or: install.sh --cpu
 ```
 
