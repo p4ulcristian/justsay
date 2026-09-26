@@ -26,16 +26,18 @@ def runtime_dir() -> Path:
 
 @dataclass
 class Config:
-    # The model is Whisper large-v3 in fp16 on an NVIDIA GPU: about 0.2-0.4 s
-    # per clip and ~5 GB of VRAM while the daemon runs. This is the directory
+    # The model is NVIDIA Canary-1B-v2 on an NVIDIA GPU: about 0.1-0.3 s per
+    # clip and ~6.5 GB of VRAM while the daemon runs. This is the directory
     # holding its ONNX files, filled by bin/iris-dictation-fetch-model. (A
     # plain directory, because onnxruntime will not follow the Hugging Face
     # cache's symlinks to the weights.)
-    model_path: str = "~/.local/share/iris-dictation/models/whisper-large-v3"
-    # The languages Whisper may pick from, as Whisper codes, e.g. ["hu", "en"].
-    # It detects which one you are speaking, but only among these, which
-    # stops short clips being read as a third language. One entry forces that
-    # language. Empty means any of Whisper's 99.
+    model_path: str = "~/.local/share/iris-dictation/models/canary-1b-v2"
+    # The languages you speak, as codes, e.g. ["hu", "en"]. Canary cannot
+    # detect the language, so each clip is written out in every one of these
+    # and the most confident version wins; each extra language costs one more
+    # decoder pass. One entry forces that language. Empty means English.
+    # Canary knows 25 European languages: bg cs da de el en es et fi fr hr hu
+    # it lt lv mt nl pl pt ro ru sk sl sv uk.
     languages: list[str] = field(default_factory=list)
 
     # Key to hold, as an evdev KEY_* name.
@@ -47,7 +49,7 @@ class Config:
     # Audio capture. Empty source means the PipeWire default input.
     # List the alternatives with: pactl list sources short
     # If the default is a noise-suppressed virtual mic, use the raw one
-    # (alsa_input...): the filters cut out words, Whisper copes with noise.
+    # (alsa_input...): the filters cut out words, the model copes with noise.
     audio_source: str = ""
     sample_rate: int = 16000
     # Milliseconds of audio to keep from before the key went down. Any value
@@ -57,7 +59,7 @@ class Config:
     preroll_ms: int = 0
     max_seconds: int = 120
     min_seconds: float = 0.35
-    # Whisper turns silence into "Thank you." and similar. Such a phrase is
+    # Speech models can turn silence into "Thank you." and similar. Such a phrase is
     # dropped when the clip's loudest 30 ms also stays under this RMS; every
     # other clip is transcribed, however quiet. Headset mic: a silent hold
     # peaks around 0.002, a quiet short word around 0.003. 0 = off.

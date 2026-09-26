@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-# What Whisper writes for a clip with nobody talking in it (from its subtitle
-# training data). Dropped only when the clip is also quiet, so saying
+# What speech models write for a clip with nobody talking in it (learned from
+# subtitle training data). Dropped only when the clip is also quiet, so saying
 # "thank you" out loud still works.
 SILENCE_PHRASES = {
     "thank you", "thanks", "thank you very much", "thanks for watching",
@@ -18,7 +18,7 @@ def is_silence_phrase(text: str) -> bool:
 
 
 def tidy_short(text: str, max_words: int) -> str:
-    """A one-to-few word result without the sentence dressing Whisper adds."""
+    """A one-to-few word result without the sentence dressing the model adds."""
     words = text.split()
     if not words or len(words) > max_words:
         return text

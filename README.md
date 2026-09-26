@@ -6,12 +6,13 @@ cloud, no account.
 
 The program itself is called **iris-dictation**: `iris-dictation`, `iris-dictation.service`.
 
-- **Fast.** Whisper large-v3 on the GPU transcribes a short phrase in about
-  0.2 s and a long sentence in about 0.4 s, measured on an RTX 5060 Ti. The
+- **Fast.** NVIDIA Canary-1B-v2 on the GPU transcribes a short phrase in
+  about 0.1 s and a long sentence in about 0.3 s, measured on an RTX 5060 Ti. The
   model stays loaded, so a key press never waits for it.
-- **Any language, or just yours.** Whisper detects the language on every
-  clip. Tell it which ones you speak (`languages = ["hu", "en"]`) and short
-  clips stop coming out in a third language.
+- **Your languages, never translated.** Canary knows 25 European languages.
+  Tell it which ones you speak (`languages = ["hu", "en"]`): every clip is
+  written out in each of them and the version the model is surest of wins,
+  so switching language between presses just works.
 - **Launcher-friendly.** Results of up to three words lose their trailing
   full stop and start lowercase, so "Firefox." arrives as `firefox`.
 - **Quiet on calls.** While you hold the key, Discord's microphone stream is
@@ -26,7 +27,7 @@ The program itself is called **iris-dictation**: `iris-dictation`, `iris-dictati
 ## Requirements
 
 - Hyprland (Omarchy for the waveform overlay), PipeWire.
-- An NVIDIA GPU with about 5 GB of free VRAM.
+- An NVIDIA GPU with about 5 GB of free VRAM (6.5 GB at peak).
 - `uv`, `wtype`, `wl-clipboard`, `libpulse` (for `parec`/`pactl`),
   `libnotify`:
 
@@ -42,7 +43,7 @@ git clone https://github.com/p4ulcristian/omarchy-dictation ~/.local/share/omarc
 ```
 
 The installer creates a Python environment inside the clone, downloads the
-model (about 3.1 GB) to `~/.local/share/iris-dictation/models/`, links
+model (about 3.7 GB) to `~/.local/share/iris-dictation/models/`, links
 `iris-dictation` and friends into `~/.local/bin`, adds the waveform overlay to
 the Omarchy shell if there is one, and starts the `iris-dictation` systemd user
 service.
@@ -101,7 +102,7 @@ Optional: `~/.config/iris-dictation/config.toml`. Every setting and its default 
 documented in [`iris_dictation/config.py`](iris_dictation/config.py). The common ones:
 
 ```toml
-languages = ["hu", "en"]    # pick only among these; [] = any of 99
+languages = ["hu", "en"]    # the languages you speak; [] = English
 key = "KEY_CAPSLOCK"        # any evdev KEY_* name
 output = "type"             # or "paste" (clipboard + paste shortcut), "clipboard"
 mute_apps = ["discord", "vesktop", "webcord"]   # add "chromium" for Discord in a browser
@@ -113,7 +114,7 @@ audio_source = ""           # a PipeWire source name; "" = default mic
 **Noise-suppressed mic?** If your default input is a filtered virtual mic
 (EasyEffects, RNNoise, PipeWire echo-cancel and the like), point
 `audio_source` at the raw microphone instead. The filters are tuned for human
-listeners and cut parts of your words out, while Whisper copes with
+listeners and cut parts of your words out, while the model copes with
 background noise, even a TV, on its own. Your calls keep the filtered mic.
 `pactl list sources short` lists the names; the raw one usually starts with
 `alsa_input.`.
@@ -125,11 +126,13 @@ A resident daemon owns the microphone, the key and the model:
 1. **Key down:** `parec` starts recording from PipeWire, and apps in
    `mute_apps` get their capture stream muted. The mic itself stays on for
    iris-dictation.
-2. **Key up:** the clip goes through Whisper (onnxruntime, CUDA, fp16). The
-   language is picked from `languages` only, by a small patch over onnx-asr's
-   Whisper language detection (`iris_dictation/languages.py`). This reaches into
-   onnx-asr internals, so the version is pinned in `requirements.txt`.
-3. The text is cleaned up: Whisper's hallucinated "Thank you." on silent
+2. **Key up:** the clip goes through Canary (onnxruntime, CUDA). Canary has
+   no language detection and translates when told the wrong language, so the
+   audio is encoded once and decoded once per entry in `languages`; the
+   decode with the highest mean token log-probability is kept
+   (`iris_dictation/languages.py`). This reaches into onnx-asr internals, so
+   the version is pinned in `requirements.txt`.
+3. The text is cleaned up: a hallucinated "Thank you." on silent
    clips is dropped, and short results are tidied. Then `wtype` types it into
    the focused window. If typing fails, it goes on the clipboard with a
    notification, so a transcription is never lost.

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Download the speech model, Whisper large-v3 in fp16 ONNX, into
-# ~/.local/share/iris-dictation/models/whisper-large-v3.
+# Download the speech model, NVIDIA Canary-1B-v2 in ONNX, into
+# ~/.local/share/iris-dictation/models/canary-1b-v2.
 #
 # The files go straight into that plain directory, not the Hugging Face
 # cache: onnxruntime will not follow the cache's symlinks to the weights.
 set -euo pipefail
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 
-REPO="onnx-community/whisper-large-v3-ONNX"
-DEST="$HOME/.local/share/iris-dictation/models/whisper-large-v3"
-FILES="onnx/encoder_model_fp16.onnx onnx/decoder_model_merged_fp16.onnx
-       vocab.json added_tokens.json config.json"
+REPO="istupakov/canary-1b-v2-onnx"
+DEST="$HOME/.local/share/iris-dictation/models/canary-1b-v2"
+FILES="encoder-model.onnx encoder-model.onnx.data decoder-model.onnx
+       vocab.txt config.json"
 
 echo "Fetching $REPO into $DEST ..."
 mkdir -p "$DEST"

@@ -37,7 +37,7 @@ log = logging.getLogger("iris-dictation")
 
 NOTIFY_TAG = "iris-dictation-status"
 # Its files are in cfg.model_path; the name tells onnx-asr how to load them.
-MODEL = "onnx-community/whisper-large-v3-ONNX"
+MODEL = "nemo-canary-1b-v2"
 
 
 def notify(summary: str, body: str = "", timeout: int = 2000) -> None:
@@ -93,15 +93,15 @@ class Daemon:
         # before the first session so onnxruntime finds them.
         ort.preload_dlls()
         self.model = onnx_asr.load_model(
-            MODEL, path=os.path.expanduser(self.cfg.model_path), quantization="fp16",
+            MODEL, path=os.path.expanduser(self.cfg.model_path),
             # Grow the memory pool only by what is asked for, not in doubling
             # steps: about 300 MB less VRAM held, same speed.
             providers=[("CUDAExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"}),
                        "CPUExecutionProvider"])
         log.info("model loaded in %.2fs", time.time() - t0)
-        if self.cfg.languages:
-            languages.restrict(self.model, self.cfg.languages)
-            log.info("languages: %s", ", ".join(self.cfg.languages))
+        langs = self.cfg.languages or ["en"]
+        languages.install(self.model, langs)
+        log.info("languages: %s", ", ".join(langs))
 
         # Warm up so the first real press does not pay for lazy allocation.
         t0 = time.time()
@@ -186,7 +186,7 @@ class Daemon:
         return text
 
     def recognize(self, samples: np.ndarray, rate: int) -> str:
-        # Whisper hears 30 s at a time; a longer recording goes in pieces.
+        # Canary is trained on clips up to 40 s; a longer recording goes in pieces.
         texts = (self.model.recognize(piece, sample_rate=rate) or ""
                  for piece in audio.split_at_pauses(samples, rate))
         return " ".join(t.strip() for t in texts if t.strip())

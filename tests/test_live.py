@@ -40,8 +40,8 @@ def test_missing_file_does_not_kill_the_daemon():
 
 
 def test_recording_longer_than_30_seconds_keeps_the_end(tmp_path):
-    # ~45 s: the English clips back to back with short pauses. Whisper hears
-    # 30 s at a time, so the last sentence only survives if the daemon splits.
+    # ~45 s: the English clips back to back with short pauses. The model is
+    # trained on up to 40 s, so the daemon splits and every sentence survives.
     import wave
     names = ["16k_fleurs_en_0.wav", "16k_fleurs_en_1.wav", "16k_fleurs_en_2.wav",
              "16k_fleurs_en_0.wav", "16k_fleurs_en_2.wav"]

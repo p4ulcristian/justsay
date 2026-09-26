@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.0.0
+
+The model is now NVIDIA Canary-1B-v2 instead of Whisper large-v3: better on
+Hungarian (FLEURS WER 12.9% against 14.1%), about 0.1-0.3 s per clip, and
+4.9 GB of VRAM instead of 7.4 GB.
+
+Changed:
+- Whisper picked one language up front and, when it picked wrong, typed a
+  translation instead of what you said. Canary writes each clip out in every
+  language in `languages` and keeps the version it is most confident in; a
+  translation scores far lower than the real transcript.
+- `languages = []` now means English only (Canary cannot detect the
+  language). Canary knows 25 European languages; the list is in
+  `iris_dictation/config.py`.
+
+To update: `git pull`, run `./install.sh` again (it downloads the new model,
+3.7 GB), and delete `~/.local/share/iris-dictation/models/whisper-large-v3`.
+
 ## 2.3.0
 
 Fixed:
