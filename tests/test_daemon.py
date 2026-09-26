@@ -92,11 +92,3 @@ def test_thank_you_said_out_loud_is_kept(make):
     d.on_down()
     d.on_up()
     assert typed == ["thank you "]
-
-
-def test_taught_phrases_are_replaced(make, monkeypatch):
-    d, typed, _ = make(text="Please comitant push the branch.")
-    monkeypatch.setattr(d.vocabulary, "heard", lambda: {"comitant push": "commit and push"})
-    d.on_down()
-    d.on_up()
-    assert typed == ["Please commit and push the branch. "]

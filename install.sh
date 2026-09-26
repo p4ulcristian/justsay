@@ -22,7 +22,7 @@ uv pip install -q --python .venv/bin/python -r requirements.txt
 ./bin/iris-dictation-fetch-model
 
 mkdir -p ~/.local/bin ~/.config/systemd/user
-for b in iris-dictation-daemon iris-dictation iris-dictation-selftest iris-dictation-learn; do
+for b in iris-dictation-daemon iris-dictation iris-dictation-selftest; do
   ln -sfn "$SRC/bin/$b" ~/.local/bin/$b
 done
 

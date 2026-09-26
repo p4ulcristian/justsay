@@ -1,8 +1,0 @@
-# Phrases Whisper keeps getting wrong -> what you meant. Copy to
-# ~/.config/iris-dictation/vocabulary.toml; changes apply on the next
-# dictation, no restart needed. Matched as whole words, in any case.
-# This file is private: keep your real words out of any repository.
-
-[heard]
-"Zorbax" = "Zorbex"
-"quill oh app" = "QuilloApp"

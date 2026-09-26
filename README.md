@@ -95,37 +95,6 @@ journalctl --user -u iris-dictation -f
 iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
 ```
 
-## Your vocabulary
-
-Whisper gets some names wrong the same way every time. Teach it once in
-`~/.config/iris-dictation/vocabulary.toml` (see
-[vocabulary.example.toml](vocabulary.example.toml)) and that phrase is
-replaced in every dictation from then on: whole words, any case. Edits apply
-on the next dictation. The file stays on your machine.
-
-```toml
-[heard]
-"Zorbax" = "Zorbex"
-```
-
-Check what a sentence becomes: `iris-dictation fix "I pushed it to Zorbax"`.
-
-### Let an agent find your mishearings
-
-```sh
-iris-dictation-learn            # dictations since the last run (or the last 7 days)
-iris-dictation-learn --since=-2h --dry-run
-```
-
-It hands your recent dictations to an AI agent, which looks for mishearings
-(the same thing said again a few seconds later, spelled differently; names
-written wrong) and proposes `[heard]` entries. You answer y/n to each. The accepted
-ones go into your vocabulary and are checked against the dictations they came
-from. The agent has no tools and changes nothing itself. By default it is
-Claude Code (`claude -p`), which means the reviewed dictations are sent to
-Anthropic; set `IRIS_DICTATION_AGENT` to any command that reads the prompt on
-stdin and prints the JSON answer to use another one.
-
 ## Config
 
 Optional: `~/.config/iris-dictation/config.toml`. Every setting and its default is

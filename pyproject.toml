@@ -10,5 +10,3 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
 
-[tool.ruff.lint.per-file-ignores]
-"tests/test_learn.py" = ["E501"]   # real journal lines

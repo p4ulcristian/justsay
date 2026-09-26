@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# Review recent dictations with an AI agent and add what it learns to the
-# vocabulary, one yes/no at a time. See iris_dictation/learn.py.
-cd "$(dirname "$(dirname "$(readlink -f "$0")")")" || exit 1
-exec .venv/bin/python -m iris_dictation.learn "$@"

@@ -18,7 +18,6 @@ side, read the reply until the daemon closes the connection. `iris-dictation
 | `toggle` | `ok` | `start` when idle, `stop` when recording |
 | `status` | `idle`, `recording` or `transcribing` | |
 | `transcribe <path>` | the text | transcribe a wav file (absolute path) and reply with the text; nothing is typed; empty when nothing was heard or the file can't be read |
-| `fix <text>` | the text | apply the vocabulary to a text and reply with the result; nothing is typed |
 | `ping` | `pong` | |
 | `quit` | `ok` | shut the daemon down |
 

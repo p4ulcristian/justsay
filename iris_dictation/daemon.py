@@ -32,7 +32,6 @@ from .keys import KeyWatcher
 from .mute import StreamMuter
 from .sockets import LEVELS_SOCKET, SOCKET_NAME, ControlServer, LevelServer
 from .text import is_silence_phrase, tidy_short
-from .vocabulary import VocabularyFile, replace_heard
 
 log = logging.getLogger("iris-dictation")
 
@@ -66,7 +65,6 @@ class Daemon:
         self.cfg = cfg
         self.events: queue.Queue = queue.Queue()
         self.state = "idle"
-        self.vocabulary = VocabularyFile(cfgmod.VOCABULARY_PATH)
         if cfg.preroll_ms > 0:
             self.recorder = HotRecorder(cfg.sample_rate, cfg.max_seconds,
                                         cfg.audio_source, cfg.preroll_ms)
@@ -176,12 +174,6 @@ class Daemon:
         elapsed = time.time() - t0
         log.info("%.1fs audio (peak rms %.4f) -> %.2fs infer (rtf %.3f): %r",
                  seconds, peak, elapsed, elapsed / max(seconds, 0.01), text)
-        if text:
-            t0 = time.time()
-            fixed = replace_heard(text, self.vocabulary.heard())
-            if fixed != text:
-                log.info("fixed -> %r (%.2fs)", fixed, time.time() - t0)
-            text = fixed
         text = tidy_short(text, self.cfg.short_words)
         if not text:
             self.levels.send("nothing")
@@ -195,10 +187,6 @@ class Daemon:
 
     def recognize(self, samples: np.ndarray, rate: int) -> str:
         return (self.model.recognize(samples, sample_rate=rate) or "").strip()
-
-    def on_fix(self, text: str, box: queue.Queue) -> None:
-        """Apply the vocabulary to a text and reply with the result."""
-        box.put(replace_heard(text, self.vocabulary.heard()) if text else "")
 
     def deliver(self, text: str) -> None:
         payload = text + (" " if self.cfg.trailing_space else "")
@@ -237,8 +225,7 @@ class Daemon:
         self.set_state("idle")
         log.info("ready, hold %s to dictate", self.cfg.key)
 
-        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file,
-                    "fix": self.on_fix}
+        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file}
         try:
             while True:
                 kind, *args = self.events.get()

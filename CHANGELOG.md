@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0
+
+Removed:
+- The vocabulary (`~/.config/iris-dictation/vocabulary.toml`), the
+  `iris-dictation fix` command and `iris-dictation-learn`. Whisper
+  large-v3's own transcript is typed as it is. Delete the vocabulary file
+  and `~/.local/bin/iris-dictation-learn` if you have them.
+
 ## 2.1.0
 
 Removed:

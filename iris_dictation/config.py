@@ -15,7 +15,6 @@ log = logging.getLogger("iris-dictation")
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "iris-dictation"
 CONFIG_PATH = CONFIG_DIR / "config.toml"
-VOCABULARY_PATH = CONFIG_DIR / "vocabulary.toml"
 
 
 def runtime_dir() -> Path:
