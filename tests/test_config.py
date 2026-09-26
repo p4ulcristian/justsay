@@ -17,10 +17,11 @@ def test_file_overrides_defaults(tmp_path, monkeypatch):
     assert cfg.key == "KEY_RIGHTALT"
 
 
-def test_unknown_keys_are_skipped(tmp_path, monkeypatch):
+def test_unknown_keys_are_skipped_with_a_warning(tmp_path, monkeypatch, caplog):
     path = tmp_path / "config.toml"
     path.write_text('lnaguages = ["hu"]\n')
     monkeypatch.setattr(config, "CONFIG_PATH", path)
     cfg = config.load()
     assert cfg.languages == []
     assert not hasattr(cfg, "lnaguages")
+    assert "lnaguages" in caplog.text

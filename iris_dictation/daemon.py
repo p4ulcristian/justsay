@@ -120,12 +120,10 @@ class KeyWatcher(threading.Thread):
 
     RESCAN_SECONDS = 5.0
 
-    def __init__(self, keycode: int, paths: list[str], events: queue.Queue,
-                 fixed_paths: bool = False) -> None:
+    def __init__(self, keycode: int, devices: list[str], events: queue.Queue) -> None:
         super().__init__(daemon=True)
         self.keycode = keycode
-        self.fixed_paths = fixed_paths
-        self.paths = paths
+        self.devices = devices      # fixed paths from the config; empty = discover
         self.events = events
         self._stop = threading.Event()
         self._open: dict[str, evdev.InputDevice] = {}
@@ -135,9 +133,7 @@ class KeyWatcher(threading.Thread):
         self._stop.set()
 
     def _wanted(self) -> list[str]:
-        if self.fixed_paths:
-            return self.paths
-        return discover_keyboards(self.keycode)
+        return self.devices or discover_keyboards(self.keycode)
 
     def _drop(self, path: str) -> None:
         dev = self._open.pop(path, None)
@@ -310,6 +306,10 @@ class Daemon:
         self.levels = LevelServer(str(cfgmod.runtime_dir() / LEVELS_SOCKET))
         self.recorder.listener = self.levels.level
 
+    def notify(self, summary: str, body: str = "", timeout: int = 2000) -> None:
+        if self.cfg.notify:
+            notify(summary, body, timeout)
+
     def set_state(self, state: str) -> None:
         self.state = state
         self.levels.send(state)
@@ -362,9 +362,9 @@ class Daemon:
                              sample_rate=self.cfg.sample_rate)
         log.info("warmup %.2fs", time.time() - t0)
 
-    def transcribe(self, samples: np.ndarray) -> str:
+    def transcribe(self, samples: np.ndarray, rate: int) -> str:
         assert self.model is not None
-        text = self.model.recognize(samples, sample_rate=self.cfg.sample_rate)
+        text = self.model.recognize(samples, sample_rate=rate)
         return (text or "").strip()
 
     def on_down(self) -> None:
@@ -379,8 +379,7 @@ class Daemon:
             log.exception("could not start recording")
             self.muter.restore()
             self.set_state("idle")
-            if self.cfg.notify:
-                notify("Dictation error", str(exc))
+            self.notify("Dictation error", str(exc))
 
     def on_up(self, box: queue.Queue | None = None) -> None:
         if self.state != "recording":
@@ -398,18 +397,20 @@ class Daemon:
             if box:
                 box.put("")
             return
-        self.finish(samples, seconds, box)
+        self.finish(samples, self.cfg.sample_rate, box)
 
-    def finish(self, samples: np.ndarray, seconds: float,
+    def finish(self, samples: np.ndarray, rate: int,
                box: queue.Queue | None = None) -> None:
-        """Transcribe and type the text, or put it in `box` for a stop-return caller."""
+        """Transcribe and type the text, or put it in `box` for a caller
+        waiting on the control socket (stop-return, transcribe)."""
+        seconds = len(samples) / rate
         t0 = time.time()
         try:
-            text = self.transcribe(samples)
+            text = self.transcribe(samples, rate)
         except Exception as exc:
             log.exception("transcription failed")
             self.set_state("idle")
-            notify("Dictation error", str(exc), timeout=4000)
+            self.notify("Dictation error", str(exc), timeout=4000)
             if box:
                 box.put("")
             return
@@ -439,7 +440,7 @@ class Daemon:
         method = out.deliver(payload, self.cfg.output, self.cfg.output_fallback)
         self.set_state("idle")
         if method == "clipboard" and self.cfg.output != "clipboard":
-            notify("Dictation: on clipboard", "Could not type it, press ctrl+v", timeout=4000)
+            self.notify("Dictation: on clipboard", "Could not type it, press ctrl+v", timeout=4000)
 
     def on_file(self, path: str, box: queue.Queue) -> None:
         """Transcribe a wav from disk. Used for testing the pipeline."""
@@ -454,13 +455,8 @@ class Daemon:
             box.put("")
             return
         samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-        seconds = len(samples) / rate
         self.set_state("transcribing")
-        saved, self.cfg.sample_rate = self.cfg.sample_rate, rate
-        try:
-            self.finish(samples, seconds, box)
-        finally:
-            self.cfg.sample_rate = saved
+        self.finish(samples, rate, box)
 
     def run(self) -> int:
         self.load_model()
@@ -469,16 +465,11 @@ class Daemon:
         if keycode is None:
             log.error("unknown key %s", self.cfg.key)
             return 2
-        paths = self.cfg.devices or discover_keyboards(keycode)
-        if not paths:
-            log.error("no keyboard exposes %s (or no read access to /dev/input)",
-                      self.cfg.key)
-            return 2
-
-        watcher = KeyWatcher(keycode, paths, self.events,
-                             fixed_paths=bool(self.cfg.devices))
+        watcher = KeyWatcher(keycode, self.cfg.devices, self.events)
         if watcher.prepare() == 0:
-            log.error("no readable keyboard exposes %s; is this user in the "
+            # Not fatal: the watcher keeps looking, so a keyboard plugged in
+            # later still works, and start/stop over the socket work anyway.
+            log.error("no readable keyboard exposes %s yet; is this user in the "
                       "input group or granted uaccess on /dev/input?",
                       self.cfg.key)
         watcher.start()

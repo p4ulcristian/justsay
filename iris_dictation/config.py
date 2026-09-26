@@ -5,10 +5,13 @@ Everything is overridable from ~/.config/iris-dictation/config.toml.
 
 from __future__ import annotations
 
+import logging
 import os
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
+
+log = logging.getLogger("iris-dictation")
 
 CONFIG_PATH = Path(
     os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
@@ -117,4 +120,6 @@ def load() -> Config:
     for key, value in data.items():
         if key in known:
             setattr(cfg, key, value)
+        else:
+            log.warning("%s: unknown setting %r, ignored", CONFIG_PATH, key)
     return cfg
