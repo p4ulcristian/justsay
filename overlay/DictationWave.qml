@@ -7,13 +7,14 @@ import qs.Commons
 import qs.Ui
 
 // Dictation overlay for the Omarchy shell. iris-dictation broadcasts its state and the
-// live voice level on $XDG_RUNTIME_DIR/iris-dictation/levels.sock (see LevelServer in
-// iris_dictation/daemon.py), one line per event:
+// live voice level on $XDG_RUNTIME_DIR/iris-dictation/levels.sock (see PROTOCOL.md),
+// one line per event:
 //   recording | level 0.42 | transcribing | text <result> | typing <chars> | nothing | idle
-// While recording, three tapered neon sine waves swell with the voice and a dot
-// pulses. While waiting (transcribing, then typing the text out) the waves run
-// edge to edge on their own; during typing they sit behind the text and light
-// up from the left as it goes out. The text stays until typing is done.
+// One look from start to finish: a dot on the left and three tapered neon sine
+// waves. While recording both follow the voice. While waiting (transcribing,
+// then typing the text out) they ease into a slow breath of their own; during
+// typing the waves sit behind the text and light up from the left as it goes
+// out. The dot stays until the pill hides.
 Item {
   id: root
 
@@ -22,10 +23,11 @@ Item {
   property real target: 0             // latest level from iris-dictation, 0..1
   property real amp: 0                // smoothed level the waves draw with
   property real phase: 0
+  property real clock: 0              // seconds, drives the breath while waiting
   property real typed: 0              // 0..1, typing progress bar
   property bool typing: false
-  // Waiting on iris-dictation (transcribing, then typing a long result): the waves
-  // run edge to edge on their own instead of following the voice.
+  // Waiting on iris-dictation (transcribing, then typing a long result): the dot and
+  // the waves breathe on their own instead of following the voice.
   readonly property bool loading: mode === "transcribing" || (mode === "result" && typing)
 
   readonly property bool shown: mode !== "hidden"
@@ -116,16 +118,20 @@ Item {
     onTriggered: levels.connected = true
   }
 
-  // Advance the waves only while they are on screen.
+  // Runs while the pill is up. amp always eases toward its goal, so the voice
+  // hands over to the breath (and the breath to rest) without a jump.
   FrameAnimation {
-    running: root.mode === "recording" || root.loading
+    running: root.shown
     onTriggered: {
-      var goal = root.mode === "recording" ? root.target : 0
+      root.clock += frameTime
+      var goal = root.mode === "recording" ? root.target
+               : root.loading ? 0.3 + 0.12 * Math.sin(root.clock * 2)
+               : 0
       // Rise fast with the voice, settle a little slower.
       var k = goal > root.amp ? 0.35 : 0.12
       root.amp += (goal - root.amp) * k
-      root.phase += frameTime * (root.mode === "recording" ? 5.5 + 5 * root.amp : 7)
-      wave.requestPaint()
+      root.phase += frameTime * (5.5 + 5 * root.amp)
+      if (wave.visible) wave.requestPaint()
     }
   }
 
@@ -157,9 +163,8 @@ Item {
       color: Util.alpha(Color.background, 0.9)
       borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
 
-      // Recording dot, pulsing with the voice.
+      // The dot: pulses with the voice, breathes while waiting, rests on the result.
       Rectangle {
-        visible: root.mode === "recording"
         x: 22
         anchors.verticalCenter: parent.verticalCenter
         width: 12 + 6 * root.amp
@@ -175,8 +180,8 @@ Item {
         id: wave
         visible: root.mode === "recording" || root.loading
         anchors.fill: parent
-        anchors.leftMargin: root.loading ? 6 : 48
-        anchors.rightMargin: root.loading ? 6 : 24
+        anchors.leftMargin: 48
+        anchors.rightMargin: 24
         antialiasing: true
 
         onPaint: {
@@ -184,39 +189,6 @@ Item {
           ctx.reset()
           var w = width, h = height, mid = h / 2
           var maxA = h * 0.42
-          if (root.loading) {
-            // Waiting: the three colours as full-width sine waves, a third of a
-            // turn apart, chasing each other across the pill and breathing.
-            // While typing they sit dim behind the text and light up from the
-            // left as the text goes out.
-            ctx.globalCompositeOperation = "lighter"
-            var breathe = 0.75 + 0.25 * Math.sin(root.phase * 0.6)
-            var passes = root.typing
-                ? [{ x1: w, alpha: 0.22 }, { x1: w * root.typed, alpha: 0.75 }]
-                : [{ x1: w, alpha: 1.0 }]
-            for (var p = 0; p < passes.length; p++) {
-              ctx.save()
-              ctx.beginPath()
-              ctx.rect(0, 0, passes[p].x1, h)
-              ctx.clip()
-              for (var i = 0; i < root.hues.length; i++) {
-                ctx.lineWidth = 2.5
-                ctx.strokeStyle = Util.alpha(root.hues[i], passes[p].alpha)
-                ctx.shadowColor = root.hues[i]
-                ctx.shadowBlur = passes[p].alpha > 0.5 ? 10 : 0
-                ctx.beginPath()
-                for (var px = 0; px <= w; px += 3) {
-                  var py = mid + Math.sin(px / w * Math.PI * 2 * 2.5 - root.phase + i * Math.PI * 2 / 3)
-                              * maxA * 0.45 * breathe
-                  if (px === 0) ctx.moveTo(px, py)
-                  else ctx.lineTo(px, py)
-                }
-                ctx.stroke()
-              }
-              ctx.restore()
-            }
-            return
-          }
           // Three neon sine waves: different speeds and wavelengths, the front
           // one strongest, each with a glow. Overlaps add up brighter.
           ctx.globalCompositeOperation = "lighter"
@@ -225,23 +197,34 @@ Item {
             { freq: 3.1, speed: -0.7, alpha: 0.8,  width: 2,   scale: 0.7 },
             { freq: 1.6, speed: 0.45, alpha: 0.6,  width: 1.5, scale: 0.5 }
           ]
-          for (var l = 0; l < layers.length; l++) {
-            var L = layers[l]
+          // While typing: dim behind the text, lit up to how far typing got.
+          var passes = root.typing
+              ? [{ x1: w, alpha: 0.22 }, { x1: w * root.typed, alpha: 0.75 }]
+              : [{ x1: w, alpha: 1.0 }]
+          for (var p = 0; p < passes.length; p++) {
+            ctx.save()
             ctx.beginPath()
-            ctx.lineWidth = L.width
-            ctx.strokeStyle = Util.alpha(root.hues[l], L.alpha)
-            ctx.shadowColor = root.hues[l]
-            ctx.shadowBlur = 8
-            for (var x = 0; x <= w; x += 3) {
-              var t = x / w
-              // Taper to zero at both ends so the wave floats in the pill.
-              var env = Math.pow(Math.sin(Math.PI * t), 2)
-              var y = mid + Math.sin(t * Math.PI * 2 * L.freq + root.phase * L.speed)
-                        * maxA * L.scale * (0.04 + root.amp) * env
-              if (x === 0) ctx.moveTo(x, y)
-              else ctx.lineTo(x, y)
+            ctx.rect(0, 0, passes[p].x1, h)
+            ctx.clip()
+            for (var l = 0; l < layers.length; l++) {
+              var L = layers[l]
+              ctx.beginPath()
+              ctx.lineWidth = L.width
+              ctx.strokeStyle = Util.alpha(root.hues[l], L.alpha * passes[p].alpha)
+              ctx.shadowColor = root.hues[l]
+              ctx.shadowBlur = passes[p].alpha > 0.5 ? 8 : 0
+              for (var x = 0; x <= w; x += 3) {
+                var t = x / w
+                // Taper to zero at both ends so the wave floats in the pill.
+                var env = Math.pow(Math.sin(Math.PI * t), 2)
+                var y = mid + Math.sin(t * Math.PI * 2 * L.freq + root.phase * L.speed)
+                          * maxA * L.scale * (0.04 + root.amp) * env
+                if (x === 0) ctx.moveTo(x, y)
+                else ctx.lineTo(x, y)
+              }
+              ctx.stroke()
             }
-            ctx.stroke()
+            ctx.restore()
           }
         }
       }
@@ -250,7 +233,7 @@ Item {
       Text {
         visible: root.mode === "result"
         anchors.fill: parent
-        anchors.leftMargin: 24
+        anchors.leftMargin: 48              // clear of the dot
         anchors.rightMargin: 24
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

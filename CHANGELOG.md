@@ -2,10 +2,15 @@
 
 ## 1.1.0
 
-To update: `git pull`, then run `./install.sh` again (with `--cpu` if you
-installed that way).
+To update: `git pull`, run `./install.sh` again (with `--cpu` if you
+installed that way), and on Omarchy restart the shell (`omarchy-restart-shell`)
+so it loads the new overlay.
 
 Changed:
+- The overlay keeps one look from start to finish: the dot stays on screen
+  while transcribing and next to the result, and while waiting the waves
+  ease from following your voice into a slow breath instead of switching to
+  a different full-width animation.
 - `iris-dictation transcribe <file>` replies with the text instead of typing
   it into the focused window. `iris-dictation-selftest` prints its results
   the same way.
