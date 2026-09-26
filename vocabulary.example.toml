@@ -1,12 +1,8 @@
-# Your own words, for the second pass (fix_model in config.toml). Copy to
-# ~/.config/iris-dictation/vocabulary.toml and edit; changes apply on the next
-# dictation, no restart needed.
+# Phrases Whisper keeps getting wrong -> what you meant. Copy to
+# ~/.config/iris-dictation/vocabulary.toml; changes apply on the next
+# dictation, no restart needed. Matched as whole words, in any case.
 # This file is private: keep your real words out of any repository.
 
-# Names and spellings Whisper tends to get wrong.
-words = ["Zorbex", "Quillo", "foobartools.com"]
-
-# A mishearing you have seen in the log -> what you meant. The model learns
-# from these as examples.
 [heard]
 "Zorbax" = "Zorbex"
+"quill oh app" = "QuilloApp"

@@ -95,39 +95,20 @@ journalctl --user -u iris-dictation -f
 iris-dictation-daemon --debug    # run in a terminal instead (stop the service first)
 ```
 
-## Second pass: your words, no "um"s
+## Your vocabulary
 
-Optional. A small local language model reads what Whisper wrote before it
-is typed, and fixes three things only:
-
-- words Whisper misheard that are in your vocabulary ("Zorbax" -> "Zorbex"),
-- filler sounds ("so, um, the tests pass" -> "so, the tests pass"),
-- self-corrections ("Monday, no wait, Tuesday" -> "Tuesday"); the small
-  default model mostly leaves these alone.
-
-Every answer is checked against Whisper's text, and anything beyond those
-changes is thrown away, so the worst case is Whisper's own text. It takes
-about 0.1 s on a GPU. Any OpenAI-compatible server works; with Ollama:
-
-```sh
-ollama pull qwen3.5:2b-q4_K_M     # ~1.6 GB of VRAM while loaded
-```
+Whisper gets some names wrong the same way every time. Teach it once in
+`~/.config/iris-dictation/vocabulary.toml` (see
+[vocabulary.example.toml](vocabulary.example.toml)) and that phrase is
+replaced in every dictation from then on: whole words, any case. Edits apply
+on the next dictation. The file stays on your machine.
 
 ```toml
-# ~/.config/iris-dictation/config.toml
-fix_model = "qwen3.5:2b-q4_K_M"
+[heard]
+"Zorbax" = "Zorbex"
 ```
 
-Put your names and domains in `~/.config/iris-dictation/vocabulary.toml`,
-copied from [vocabulary.example.toml](vocabulary.example.toml); edits apply on
-the next dictation. The file and the model both stay on your machine. The
-journal shows Whisper's text and every fix, so a wrong fix is easy to spot.
-
-The `[heard]` entries in that file are certain: a phrase Whisper keeps
-getting wrong is always replaced, with or without the model. The model's own
-changes are checked one by one, and only the allowed ones are kept.
-
-Check what a sentence would become: `iris-dictation fix "my dual sense controller"`.
+Check what a sentence becomes: `iris-dictation fix "I pushed it to Zorbax"`.
 
 ### Let an agent find your mishearings
 
@@ -138,7 +119,7 @@ iris-dictation-learn --since=-2h --dry-run
 
 It hands your recent dictations to an AI agent, which looks for mishearings
 (the same thing said again a few seconds later, spelled differently; names
-written wrong) and proposes entries. You answer y/n to each. The accepted
+written wrong) and proposes `[heard]` entries. You answer y/n to each. The accepted
 ones go into your vocabulary and are checked against the dictations they came
 from. The agent has no tools and changes nothing itself. By default it is
 Claude Code (`claude -p`), which means the reviewed dictations are sent to

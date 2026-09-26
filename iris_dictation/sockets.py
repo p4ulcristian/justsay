@@ -127,8 +127,8 @@ class ControlServer(threading.Thread):
             # can check what was heard.
             return self.ask("file", arg.strip())
         if verb == "fix":
-            # The second pass on a given text, no audio: what a dictation of
-            # these words would type. For checking the vocabulary.
+            # The vocabulary applied to a given text, no audio: what a
+            # dictation of these words would type.
             return self.ask("fix", arg.strip())
         if verb == "ping":
             return "pong"

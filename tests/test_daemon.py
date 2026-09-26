@@ -5,7 +5,7 @@ import queue
 import numpy as np
 import pytest
 
-from iris_dictation import config, daemon, fixer
+from iris_dictation import config, daemon
 
 
 class FakeRecorder:
@@ -94,26 +94,9 @@ def test_thank_you_said_out_loud_is_kept(make):
     assert typed == ["thank you "]
 
 
-def test_fixer_runs_before_typing(make):
-    d, typed, sent = make(text="I pushed it to Zorbax.")
-
-    class FakeFixer:
-        def warm(self):
-            pass
-
-        def fix(self, text):
-            return text.replace("Zorbax", "Zorbex")
-    d.fixer = FakeFixer()
-    d.on_down()
-    d.on_up()
-    assert typed == ["I pushed it to Zorbex. "]
-    assert "text I pushed it to Zorbex." in sent
-
-
-def test_taught_mishearings_apply_without_a_model(make, monkeypatch):
+def test_taught_phrases_are_replaced(make, monkeypatch):
     d, typed, _ = make(text="Please comitant push the branch.")
-    monkeypatch.setattr(d.vocabulary, "get",
-                        lambda: fixer.Vocabulary(heard={"comitant push": "commit and push"}))
+    monkeypatch.setattr(d.vocabulary, "heard", lambda: {"comitant push": "commit and push"})
     d.on_down()
     d.on_up()
     assert typed == ["Please commit and push the branch. "]

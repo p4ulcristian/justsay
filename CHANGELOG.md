@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0
+
+Removed:
+- The second pass by a local language model (`fix_model`, `fix_url`,
+  `fix_timeout`): with Whisper large-v3 it had almost nothing left to fix.
+  Remove those settings from your config.toml.
+- The `words` list in the vocabulary; only `[heard]` is used.
+
+The `[heard]` vocabulary, `iris-dictation fix` and `iris-dictation-learn`
+stay.
+
 ## 2.0.0
 
 One model: Whisper large-v3 (full, fp16) on an NVIDIA GPU. About 0.2-0.4 s

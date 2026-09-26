@@ -80,20 +80,6 @@ class Config:
 
     notify: bool = True
 
-    # Second pass: a small local language model fixes words Whisper misheard
-    # from your vocabulary (~/.config/iris-dictation/vocabulary.toml, see
-    # vocabulary.example.toml), drops filler sounds, and keeps only the
-    # corrected version when you correct yourself ("Monday, no wait,
-    # Tuesday"). About 0.1 s on a GPU. Any change beyond that is rejected and
-    # Whisper's own text is typed. Needs an OpenAI-compatible server, e.g.
-    #   ollama pull qwen3.5:2b-q4_K_M
-    # Empty fix_model = off.
-    fix_model: str = ""
-    fix_url: str = "http://localhost:11434/v1"
-    # Seconds to wait for the model. It is loaded while you talk, but a cold
-    # load from disk can take ~10 s; past this Whisper's text is typed.
-    fix_timeout: float = 5.0
-
     # Mute these apps' microphone streams while the key is held, so a voice
     # call does not hear the dictation. Matched case-insensitively against
     # the stream's application name and binary. Discord as a browser web app

@@ -28,11 +28,11 @@ from . import audio, languages
 from . import config as cfgmod
 from . import output as out
 from .audio import HotRecorder, Recorder
-from .fixer import Fixer, VocabularyFile, replace_heard
 from .keys import KeyWatcher
 from .mute import StreamMuter
 from .sockets import LEVELS_SOCKET, SOCKET_NAME, ControlServer, LevelServer
 from .text import is_silence_phrase, tidy_short
+from .vocabulary import VocabularyFile, replace_heard
 
 log = logging.getLogger("iris-dictation")
 
@@ -67,8 +67,6 @@ class Daemon:
         self.events: queue.Queue = queue.Queue()
         self.state = "idle"
         self.vocabulary = VocabularyFile(cfgmod.VOCABULARY_PATH)
-        self.fixer = Fixer(cfg.fix_url, cfg.fix_model, cfg.fix_timeout,
-                           self.vocabulary) if cfg.fix_model else None
         if cfg.preroll_ms > 0:
             self.recorder = HotRecorder(cfg.sample_rate, cfg.max_seconds,
                                         cfg.audio_source, cfg.preroll_ms)
@@ -118,8 +116,6 @@ class Daemon:
             log.debug("ignoring key down while %s", self.state)
             return
         self.set_state("recording")
-        if self.fixer:
-            self.fixer.warm()
         self.muter.mute()
         try:
             self.recorder.start()
@@ -182,7 +178,7 @@ class Daemon:
                  seconds, peak, elapsed, elapsed / max(seconds, 0.01), text)
         if text:
             t0 = time.time()
-            fixed = self.second_pass(text)
+            fixed = replace_heard(text, self.vocabulary.heard())
             if fixed != text:
                 log.info("fixed -> %r (%.2fs)", fixed, time.time() - t0)
             text = fixed
@@ -200,14 +196,9 @@ class Daemon:
     def recognize(self, samples: np.ndarray, rate: int) -> str:
         return (self.model.recognize(samples, sample_rate=rate) or "").strip()
 
-    def second_pass(self, text: str) -> str:
-        """Taught mishearings (always), then the model (when configured)."""
-        text = replace_heard(text, self.vocabulary.get().heard)
-        return self.fixer.fix(text) if self.fixer else text
-
     def on_fix(self, text: str, box: queue.Queue) -> None:
-        """Run a text through the second pass and reply with the result."""
-        box.put(self.second_pass(text) if text else "")
+        """Apply the vocabulary to a text and reply with the result."""
+        box.put(replace_heard(text, self.vocabulary.heard()) if text else "")
 
     def deliver(self, text: str) -> None:
         payload = text + (" " if self.cfg.trailing_space else "")

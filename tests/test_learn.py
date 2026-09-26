@@ -28,44 +28,27 @@ def test_read_log(monkeypatch):
 
 EXISTING = """\
 # my words
-words = [
-  "Zorbex",   # the service
-]
 
 [heard]
 "Zorbax" = "Zorbex"
 """
 
 
-@pytest.mark.parametrize("start", [EXISTING, "", "[heard]\n", 'words = []\n'])
+@pytest.mark.parametrize("start", [EXISTING, "", "[heard]\n", "[heard]\n\n[other]\nx = 1\n"])
 def test_add_to_vocabulary(tmp_path, start):
     path = tmp_path / "vocabulary.toml"
     path.write_text(start)
-    learn.add_to_vocabulary(path, ["Quillo", 'Say "hi"'], {"quilo": "Quillo"})
+    learn.add_to_vocabulary(path, {"quilo": "Quillo", 'say "hi"': "Say hi"})
     data = tomllib.loads(path.read_text())
-    assert data["words"][-2:] == ["Quillo", 'Say "hi"']
     assert data["heard"]["quilo"] == "Quillo"
+    assert data["heard"]['say "hi"'] == "Say hi"
     if start == EXISTING:
         assert path.read_text().startswith("# my words\n")      # comments kept
         assert data["heard"]["Zorbax"] == "Zorbex"
 
 
-def test_add_to_vocabulary_never_writes_a_broken_file(tmp_path):
-    path = tmp_path / "vocabulary.toml"
-    path.write_text("words = [\n  \"a\"\n  # a comment,\n]\n")
-    before = path.read_text()
-    try:
-        learn.add_to_vocabulary(path, ["b"], {})
-    except tomllib.TOMLDecodeError:
-        pass
-    assert tomllib.loads(path.read_text())                     # still valid either way
-    assert path.read_text() == before or "b" in tomllib.loads(path.read_text())["words"]
-
-
 def test_add_to_vocabulary_skips_what_is_there(tmp_path):
     path = tmp_path / "vocabulary.toml"
     path.write_text(EXISTING)
-    learn.add_to_vocabulary(path, ["zorbex", "Quillo"], {"zorbax": "Other", "quilo": "Quillo"})
-    data = tomllib.loads(path.read_text())
-    assert data["words"] == ["Zorbex", "Quillo"]
-    assert data["heard"] == {"Zorbax": "Zorbex", "quilo": "Quillo"}
+    learn.add_to_vocabulary(path, {"zorbax": "Other", "quilo": "Quillo"})
+    assert tomllib.loads(path.read_text())["heard"] == {"Zorbax": "Zorbex", "quilo": "Quillo"}
