@@ -30,6 +30,22 @@ def _parec(sample_rate: int, source: str) -> subprocess.Popen:
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
 
+def pick_source(source: str | list[str]) -> str:
+    """The source to record from: `source` itself, or the first of a list
+    that PipeWire has right now ("" = the default input, if none has)."""
+    if isinstance(source, str):
+        return source
+    if len(source) <= 1:
+        return source[0] if source else ""
+    try:
+        out = subprocess.run(["pactl", "list", "sources", "short"], capture_output=True,
+                             text=True, timeout=2).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return source[-1]
+    present = {line.split("\t")[1] for line in out.splitlines() if "\t" in line}
+    return next((s for s in source if s in present), "")
+
+
 def _end(proc: subprocess.Popen | None) -> None:
     if proc is None:
         return
@@ -89,7 +105,7 @@ class Recorder:
     which lands well inside the gap between pressing a key and speaking.
     """
 
-    def __init__(self, sample_rate: int, max_seconds: int, source: str = "") -> None:
+    def __init__(self, sample_rate: int, max_seconds: int, source: str | list[str] = "") -> None:
         self.sample_rate = sample_rate
         self.source = source
         self.max_bytes = sample_rate * 2 * max_seconds
@@ -100,7 +116,7 @@ class Recorder:
 
     def start(self) -> None:
         self._chunks = []
-        self._proc = _parec(self.sample_rate, self.source)
+        self._proc = _parec(self.sample_rate, pick_source(self.source))
         self._thread = threading.Thread(target=self._pump, daemon=True)
         self._thread.start()
 
@@ -144,7 +160,7 @@ class HotRecorder:
     so it is off by default.
     """
 
-    def __init__(self, sample_rate: int, max_seconds: int, source: str = "",
+    def __init__(self, sample_rate: int, max_seconds: int, source: str | list[str] = "",
                  preroll_ms: int = 300) -> None:
         self.sample_rate = sample_rate
         self.max_bytes = sample_rate * 2 * max_seconds
@@ -162,7 +178,8 @@ class HotRecorder:
         """Start the persistent capture stream. Call once at daemon start."""
         if self._proc is not None:
             return
-        self._proc = _parec(self.sample_rate, self.source)
+        # Held open, so a list is only looked at here (and when parec reopens).
+        self._proc = _parec(self.sample_rate, pick_source(self.source))
         self._thread = threading.Thread(target=self._pump, daemon=True)
         self._thread.start()
 

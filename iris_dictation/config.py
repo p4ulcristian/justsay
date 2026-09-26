@@ -48,7 +48,10 @@ class Config:
     # List the alternatives with: pactl list sources short
     # If the default is a noise-suppressed virtual mic, use the raw one
     # (alsa_input...): the filters cut out words, Whisper copes with noise.
-    audio_source: str = ""
+    # A list means the first of them that exists when the key goes down
+    # (a mic that comes and goes, then the one that is always there); the
+    # default input if none does.
+    audio_source: str | list[str] = ""
     sample_rate: int = 16000
     # Milliseconds of audio to keep from before the key went down. Any value
     # above 0 keeps the microphone open for as long as the daemon runs, which

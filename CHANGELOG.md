@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0
+
+Added:
+- `audio_source` can be a list: each key press records from the first of
+  them that exists, the default input if none does. For a mic that comes and
+  goes (a phone streaming to the desktop), with the headset behind it.
+
 ## 2.3.0
 
 Fixed:
