@@ -110,6 +110,14 @@ preroll_ms = 0              # >0 keeps the mic open to catch the first syllable
 audio_source = ""           # a PipeWire source name; "" = default mic
 ```
 
+**Noise-suppressed mic?** If your default input is a filtered virtual mic
+(EasyEffects, RNNoise, PipeWire echo-cancel and the like), point
+`audio_source` at the raw microphone instead. The filters are tuned for human
+listeners and cut parts of your words out, while Whisper copes with
+background noise, even a TV, on its own. Your calls keep the filtered mic.
+`pactl list sources short` lists the names; the raw one usually starts with
+`alsa_input.`.
+
 ## How it works
 
 A resident daemon owns the microphone, the key and the model:

@@ -46,6 +46,8 @@ class Config:
 
     # Audio capture. Empty source means the PipeWire default input.
     # List the alternatives with: pactl list sources short
+    # If the default is a noise-suppressed virtual mic, use the raw one
+    # (alsa_input...): the filters cut out words, Whisper copes with noise.
     audio_source: str = ""
     sample_rate: int = 16000
     # Milliseconds of audio to keep from before the key went down. Any value
