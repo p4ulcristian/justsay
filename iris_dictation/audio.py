@@ -1,11 +1,12 @@
-"""Microphone capture via parec (PipeWire's PulseAudio interface)."""
+"""Microphone capture via parec (PipeWire's PulseAudio interface), and the
+loudness measures taken from it."""
 
 from __future__ import annotations
 
 import subprocess
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 
@@ -13,6 +14,54 @@ CHUNK = 4096
 # Called with each raw s16le chunk while a recording is running (about every
 # 20 ms, as parec delivers them), for the live level meter.
 Listener = Callable[[bytes], None]
+
+
+def _parec(sample_rate: int, source: str) -> subprocess.Popen:
+    cmd = [
+        "parec",
+        "--format=s16le",
+        f"--rate={sample_rate}",
+        "--channels=1",
+        "--latency-msec=20",
+        "--client-name=iris-dictation",
+    ]
+    if source:
+        cmd.append(f"--device={source}")
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
+
+def _end(proc: subprocess.Popen | None) -> None:
+    if proc is None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+def to_float(raw: bytes) -> np.ndarray:
+    """Raw s16le bytes as float32 samples in [-1, 1]."""
+    return np.frombuffer(raw[: len(raw) // 2 * 2], dtype=np.int16).astype(np.float32) / 32768.0
+
+
+def level(chunk: bytes) -> float:
+    """Loudness of one raw chunk as 0..1 on a dB scale: -54 dB (the silence
+    on a typical headset) is 0, -40 dB (normal talking on a quiet mic) is 1."""
+    x = to_float(chunk)
+    if len(x) == 0:
+        return 0.0
+    db = 20 * np.log10(float(np.sqrt(np.mean(x * x))) + 1e-9)
+    return min(1.0, max(0.0, (db + 54) / 14))
+
+
+def loudest_rms(samples: np.ndarray, window: int = 480) -> float:
+    """RMS of the loudest 30 ms (at 16 kHz) in the clip."""
+    n = len(samples) // window * window
+    if n == 0:
+        return 0.0
+    frames = samples[:n].reshape(-1, window)
+    return float(np.sqrt((frames ** 2).mean(axis=1)).max())
 
 
 class Recorder:
@@ -30,27 +79,11 @@ class Recorder:
         self._proc: subprocess.Popen | None = None
         self._chunks: list[bytes] = []
         self._thread: threading.Thread | None = None
-        self.started_at = 0.0
         self.listener: Listener | None = None
 
     def start(self) -> None:
         self._chunks = []
-        cmd = [
-            "parec",
-            "--format=s16le",
-            f"--rate={self.sample_rate}",
-            "--channels=1",
-            "--latency-msec=20",
-            "--client-name=iris-dictation",
-        ]
-        if self.source:
-            cmd.append(f"--device={self.source}")
-        self._proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
-        self.started_at = time.monotonic()
+        self._proc = _parec(self.sample_rate, self.source)
         self._thread = threading.Thread(target=self._pump, daemon=True)
         self._thread.start()
 
@@ -72,22 +105,13 @@ class Recorder:
     def stop(self) -> np.ndarray:
         """Stop capture and return float32 samples in [-1, 1]."""
         proc, self._proc = self._proc, None
-        if proc is not None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+        _end(proc)
         if self._thread is not None:
             self._thread.join(timeout=1)
             self._thread = None
         raw = b"".join(self._chunks)
         self._chunks = []
-        if not raw:
-            return np.zeros(0, dtype=np.float32)
-        if len(raw) % 2:
-            raw = raw[:-1]
-        return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        return to_float(raw)
 
 
 class HotRecorder:
@@ -115,33 +139,20 @@ class HotRecorder:
         self._capture: bytearray | None = None
         self._thread: threading.Thread | None = None
         self._stop_flag = threading.Event()
-        self.started_at = 0.0
         self.listener: Listener | None = None
 
     def open(self) -> None:
         """Start the persistent capture stream. Call once at daemon start."""
         if self._proc is not None:
             return
-        cmd = [
-            "parec", "--format=s16le", f"--rate={self.sample_rate}",
-            "--channels=1", "--latency-msec=20", "--client-name=iris-dictation",
-        ]
-        if self.source:
-            cmd.append(f"--device={self.source}")
-        self._proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                      stderr=subprocess.DEVNULL)
+        self._proc = _parec(self.sample_rate, self.source)
         self._thread = threading.Thread(target=self._pump, daemon=True)
         self._thread.start()
 
     def close(self) -> None:
         self._stop_flag.set()
         proc, self._proc = self._proc, None
-        if proc is not None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+        _end(proc)
 
     def _pump(self) -> None:
         while not self._stop_flag.is_set():
@@ -173,15 +184,10 @@ class HotRecorder:
         with self._lock:
             self._capture = bytearray(self._ring)
             self._ring = bytearray()
-        self.started_at = time.monotonic()
 
     def stop(self) -> np.ndarray:
         with self._lock:
             raw = bytes(self._capture or b"")
             self._capture = None
             self._ring = bytearray()
-        if not raw:
-            return np.zeros(0, dtype=np.float32)
-        if len(raw) % 2:
-            raw = raw[:-1]
-        return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        return to_float(raw)

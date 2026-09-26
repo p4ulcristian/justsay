@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from iris_dictation.daemon import is_silence_phrase, loudest_rms, tidy_short
+from iris_dictation.audio import level, loudest_rms, to_float
+from iris_dictation.text import is_silence_phrase, tidy_short
 
 
 @pytest.mark.parametrize("text", [
@@ -40,3 +41,16 @@ def test_loudest_rms_finds_the_loud_window():
 
 def test_loudest_rms_short_clip():
     assert loudest_rms(np.zeros(100, dtype=np.float32)) == 0.0
+
+
+def test_to_float_drops_an_odd_byte():
+    assert list(to_float(b"\x00\x40\x00\xc0\x01")) == [0.5, -0.5]
+
+
+def test_level_scale():
+    def chunk(amplitude):
+        return (np.full(320, amplitude * 32767, dtype=np.int16)).tobytes()
+    assert level(b"") == 0.0
+    assert level(chunk(0.001)) == 0.0     # about -60 dB: silence
+    assert level(chunk(0.5)) == 1.0       # loud
+    assert 0 < level(chunk(0.005)) < 1    # about -46 dB: in between

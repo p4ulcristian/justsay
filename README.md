@@ -88,7 +88,7 @@ iris-dictation stop           # stop, transcribe, type
 iris-dictation stop-return    # stop, transcribe, print the text instead of typing
 iris-dictation toggle
 iris-dictation status         # idle | recording | transcribing
-iris-dictation transcribe some.wav
+iris-dictation transcribe some.wav   # print the text, type nothing
 ```
 
 ```sh
@@ -131,6 +131,8 @@ A resident daemon owns the microphone, the key and the model:
 
 The waveform overlay listens on `$XDG_RUNTIME_DIR/iris-dictation/levels.sock`, one
 line per event: `recording`, `level 0.42`, `transcribing`, `text …`, `idle`.
+Both sockets are documented in [PROTOCOL.md](PROTOCOL.md), for building your
+own tools on them.
 
 ### Models
 
@@ -145,8 +147,19 @@ Parakeet is faster but guesses the language on its own, and on short clips
 it sometimes guesses wrong. Whisper was also slightly more accurate on the
 English test clips.
 
-`iris-dictation-selftest` runs the clips in `testwav/` through the running daemon.
-They are typed into the focused window, so focus something harmless first.
+`iris-dictation-selftest` runs the clips in `testwav/` through the running daemon
+and prints what it heard; nothing is typed.
+
+## Development
+
+```sh
+uv pip install --python .venv/bin/python pytest
+.venv/bin/python -m pytest
+```
+
+`tests/test_live.py` also runs the sample clips through the running daemon
+(skipped when it isn't running). Nothing is typed, but the overlay shows each
+result.
 
 ## Uninstall
 

@@ -4,7 +4,7 @@ depend on these replies, so they must not change."""
 import queue
 import threading
 
-from iris_dictation.daemon import ControlServer
+from iris_dictation.sockets import ControlServer
 
 
 def server(state="idle"):
@@ -16,16 +16,16 @@ def test_start_stop():
     ctl, events = server()
     assert ctl.handle("start") == "ok"
     assert ctl.handle("stop") == "ok"
-    assert [events.get_nowait(), events.get_nowait()] == ["down", "up"]
+    assert [events.get_nowait(), events.get_nowait()] == [("down",), ("up",)]
 
 
 def test_toggle():
     ctl, events = server("idle")
     ctl.handle("toggle")
-    assert events.get_nowait() == "down"
+    assert events.get_nowait() == ("down",)
     ctl, events = server("recording")
     ctl.handle("toggle")
-    assert events.get_nowait() == "up"
+    assert events.get_nowait() == ("up",)
 
 
 def test_status_ping_quit_unknown():
@@ -33,7 +33,7 @@ def test_status_ping_quit_unknown():
     assert ctl.handle("status") == "transcribing"
     assert ctl.handle("ping") == "pong"
     assert ctl.handle("quit") == "ok"
-    assert events.get_nowait() == "quit"
+    assert events.get_nowait() == ("quit",)
     assert ctl.handle("dance") == "unknown command: dance"
 
 

@@ -7,7 +7,7 @@ import socket
 import sys
 
 from . import config as cfgmod
-from .daemon import SOCKET_NAME
+from .sockets import SOCKET_NAME
 
 USAGE = """usage: iris-dictation <command>
 
