@@ -1,17 +1,23 @@
 # Changelog
 
+## 1.3.0
+
+Added:
+- An optional second pass by a small local language model
+  (`fix_model`): fixes words Whisper misheard from your private vocabulary
+  (`~/.config/iris-dictation/vocabulary.toml`), drops filler sounds, and
+  applies self-corrections. A guardrail rejects any other change. See the
+  README.
+
+Removed:
+- Format mode from 1.2.0 (`format_key`, `start-format`, `format <text>`, the
+  `format` overlay event). It was too unreliable with a small model; the
+  second pass replaces it.
+
 ## 1.2.0
 
 Added:
-- Format mode, for things that can't be dictated as sentences: hold
-  `format_key` (or send `start-format`) and "example dot com web page" is
-  typed as `https://example.com`, "method get user profile" as
-  `getUserProfile`. Fixed rules plus a small local language model behind any
-  OpenAI-compatible endpoint (Ollama by default). See the README.
-- A private vocabulary for format mode,
-  `~/.config/iris-dictation/vocabulary.toml`.
-- Control commands `start-format` and `format <text>`; overlay event
-  `format`. The overlay's dot is yellow in format mode.
+- Format mode (removed again in 1.3.0).
 
 ## 1.1.0
 

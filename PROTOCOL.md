@@ -13,13 +13,11 @@ side, read the reply until the daemon closes the connection. `iris-dictation
 | command | reply | what it does |
 |---|---|---|
 | `start` | `ok` | start recording, as if the key went down |
-| `start-format` | `ok` | start recording in format mode: on stop the phrase becomes the exact string it names (URL, name, command) and is typed with nothing after it |
-| `stop` | `ok` | stop, transcribe, type the text (formatted, after `start-format`) |
-| `stop-return` | the text | stop and transcribe, reply with the text (formatted, after `start-format`) instead of typing it; empty when nothing was heard |
+| `stop` | `ok` | stop, transcribe, type the text |
+| `stop-return` | the text | stop and transcribe, reply with the text instead of typing it; empty when nothing was heard |
 | `toggle` | `ok` | `start` when idle, `stop` when recording |
 | `status` | `idle`, `recording` or `transcribing` | |
 | `transcribe <path>` | the text | transcribe a wav file (absolute path) and reply with the text; nothing is typed; empty when nothing was heard or the file can't be read |
-| `format <text>` | the string | format a phrase given as text, no audio: `format example dot com web page` replies `https://example.com` |
 | `ping` | `pong` | |
 | `quit` | `ok` | shut the daemon down |
 
@@ -41,7 +39,6 @@ client and never reads anything from them. The waveform overlay
 | line | meaning |
 |---|---|
 | `recording` | recording started |
-| `format` | this recording is in format mode (sent right after `recording`) |
 | `level <0..1>` | voice loudness, about every 20 ms while recording (`-54 dB` = 0, `-40 dB` = 1) |
 | `transcribing` | recording stopped, the model is running |
 | `text <text>` | what was heard (newlines replaced by spaces) |
@@ -50,7 +47,5 @@ client and never reads anything from them. The waveform overlay
 | `idle` | done, ready for the next press |
 
 A normal dictation is `recording`, `level …` (many), `transcribing`,
-`text …`, `typing …`, `idle`. A format-mode dictation adds `format` right
-after `recording`, and its `text` line carries the formatted string. A
-`stop-return` or `transcribe` has no `typing` line. Clients should ignore
-lines they don't know.
+`text …`, `typing …`, `idle`. A `stop-return` or `transcribe` has no
+`typing` line. Clients should ignore lines they don't know.

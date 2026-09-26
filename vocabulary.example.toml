@@ -1,12 +1,12 @@
-# Your own words for format mode. Copy to ~/.config/iris-dictation/vocabulary.toml
-# and edit; changes apply on the next dictation, no restart needed.
+# Your own words, for the second pass (fix_model in config.toml). Copy to
+# ~/.config/iris-dictation/vocabulary.toml and edit; changes apply on the next
+# dictation, no restart needed.
 # This file is private: keep your real words out of any repository.
 
-# Names and spellings the model should prefer.
-words = ["Zorbex", "Quillo"]
+# Names and spellings Whisper tends to get wrong.
+words = ["Zorbex", "Quillo", "foobartools.com"]
 
-# What you say (roughly as the speech recogniser writes it) -> exactly what to
-# type. An exact match skips the model; the rest become examples for it.
+# A mishearing you have seen in the log -> what you meant. The model learns
+# from these as examples.
 [heard]
-"zor bex dot example" = "zorbex.example"
-"quill oh app" = "QuilloApp"
+"Zorbax" = "Zorbex"

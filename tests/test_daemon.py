@@ -94,23 +94,17 @@ def test_thank_you_said_out_loud_is_kept(make):
     assert typed == ["thank you "]
 
 
-def test_format_mode_types_the_formatted_string_exactly(make, monkeypatch):
-    d, typed, sent = make(text="Example dot com web page.")
-    monkeypatch.setattr(d.formatter, "warm", lambda: None)
-    monkeypatch.setattr(d.formatter, "format", lambda text: "https://example.com")
-    d.on_down("format")
-    d.on_up()
-    assert typed == ["https://example.com"]          # no trailing space
-    assert sent[:2] == ["recording", "format"]
-    assert "text https://example.com" in sent
+def test_fixer_runs_before_typing(make):
+    d, typed, sent = make(text="I pushed it to Zorbax.")
 
+    class FakeFixer:
+        def warm(self):
+            pass
 
-def test_after_format_mode_the_next_press_types_normally(make, monkeypatch):
-    d, typed, _ = make()
-    monkeypatch.setattr(d.formatter, "warm", lambda: None)
-    monkeypatch.setattr(d.formatter, "format", lambda text: "x")
-    d.on_down("format")
-    d.on_up()
+        def fix(self, text):
+            return text.replace("Zorbax", "Zorbex")
+    d.fixer = FakeFixer()
     d.on_down()
     d.on_up()
-    assert typed == ["x", "This is a test. "]
+    assert typed == ["I pushed it to Zorbex. "]
+    assert "text I pushed it to Zorbex." in sent

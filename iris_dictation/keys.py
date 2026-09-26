@@ -14,7 +14,7 @@ log = logging.getLogger("iris-dictation")
 
 
 class KeyWatcher(threading.Thread):
-    """Reads evdev keyboards and pushes ("down", mode) and ("up",) onto a queue.
+    """Reads evdev keyboards and pushes ('down'|'up') onto a queue.
 
     evdev rather than a Hyprland bind: it sees the physical key regardless of
     how xkb maps it, it gives a real release event, and it keeps working when
@@ -27,9 +27,9 @@ class KeyWatcher(threading.Thread):
 
     RESCAN_SECONDS = 5.0
 
-    def __init__(self, keys: dict[int, str], devices: list[str], events: queue.Queue) -> None:
+    def __init__(self, keycode: int, devices: list[str], events: queue.Queue) -> None:
         super().__init__(daemon=True)
-        self.keys = keys            # keycode -> dictation mode it starts
+        self.keycode = keycode
         self.devices = devices      # fixed paths from the config; empty = discover
         self.events = events
         self._stop = threading.Event()
@@ -40,7 +40,7 @@ class KeyWatcher(threading.Thread):
         self._stop.set()
 
     def _wanted(self) -> list[str]:
-        return self.devices or discover_keyboards(set(self.keys))
+        return self.devices or discover_keyboards(self.keycode)
 
     def _drop(self, path: str) -> None:
         dev = self._open.pop(path, None)
@@ -101,11 +101,11 @@ class KeyWatcher(threading.Thread):
                 dev = key.fileobj
                 try:
                     for ev in dev.read():
-                        if ev.type != evdev.ecodes.EV_KEY or ev.code not in self.keys:
+                        if ev.type != evdev.ecodes.EV_KEY or ev.code != self.keycode:
                             continue
                         if ev.value == 1:
                             log.debug("key down on %s", dev.path)
-                            self.events.put(("down", self.keys[ev.code]))
+                            self.events.put(("down",))
                         elif ev.value == 0:
                             log.debug("key up on %s", dev.path)
                             self.events.put(("up",))
@@ -118,7 +118,8 @@ class KeyWatcher(threading.Thread):
                     last_scan = 0.0
 
 
-def discover_keyboards(keycodes: set[int]) -> list[str]:
+
+def discover_keyboards(keycode: int) -> list[str]:
     found = []
     for path in evdev.list_devices():
         try:
@@ -127,7 +128,7 @@ def discover_keyboards(keycodes: set[int]) -> list[str]:
             continue
         keys = dev.capabilities().get(evdev.ecodes.EV_KEY, [])
         # A real keyboard, not a mouse that happens to expose a few keys.
-        if keycodes & set(keys) and evdev.ecodes.KEY_A in keys:
+        if keycode in keys and evdev.ecodes.KEY_A in keys:
             found.append(path)
         dev.close()
     return found

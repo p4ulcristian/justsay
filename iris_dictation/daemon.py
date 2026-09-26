@@ -28,7 +28,7 @@ from . import audio, languages
 from . import config as cfgmod
 from . import output as out
 from .audio import HotRecorder, Recorder
-from .formatter import Formatter, VocabularyFile
+from .fixer import Fixer, VocabularyFile
 from .keys import KeyWatcher
 from .mute import StreamMuter
 from .sockets import LEVELS_SOCKET, SOCKET_NAME, ControlServer, LevelServer
@@ -64,9 +64,8 @@ class Daemon:
         self.cfg = cfg
         self.events: queue.Queue = queue.Queue()
         self.state = "idle"
-        self.mode = "type"      # of the current recording: "type" or "format"
-        self.formatter = Formatter(cfg.format_url, cfg.format_model, cfg.format_timeout,
-                                   VocabularyFile(cfgmod.VOCABULARY_PATH))
+        self.fixer = Fixer(cfg.fix_url, cfg.fix_model, cfg.fix_timeout,
+                           VocabularyFile(cfgmod.VOCABULARY_PATH)) if cfg.fix_model else None
         if cfg.preroll_ms > 0:
             self.recorder = HotRecorder(cfg.sample_rate, cfg.max_seconds,
                                         cfg.audio_source, cfg.preroll_ms)
@@ -130,15 +129,13 @@ class Daemon:
                              sample_rate=self.cfg.sample_rate)
         log.info("warmup %.2fs", time.time() - t0)
 
-    def on_down(self, mode: str = "type") -> None:
+    def on_down(self) -> None:
         if self.state != "idle":
             log.debug("ignoring key down while %s", self.state)
             return
-        self.mode = mode
         self.set_state("recording")
-        if mode == "format":
-            self.levels.send("format")
-            self.formatter.warm()
+        if self.fixer:
+            self.fixer.warm()
         self.muter.mute()
         try:
             self.recorder.start()
@@ -177,13 +174,8 @@ class Daemon:
             log.warning("cannot read %s: %s", path, exc)
             box.put("")
             return
-        self.mode = "type"
         self.set_state("transcribing")
         box.put(self.finish(audio.to_float(raw), rate, type_it=False))
-
-    def on_format(self, text: str, box: queue.Queue) -> None:
-        """Format a phrase given as text and reply with the result."""
-        box.put(self.formatter.format(text) if text else "")
 
     def finish(self, samples: np.ndarray, rate: int, type_it: bool) -> str:
         """Transcribe, clean up, optionally type. Returns the text ("" for
@@ -204,12 +196,13 @@ class Daemon:
         elapsed = time.time() - t0
         log.info("%.1fs audio (peak rms %.4f) -> %.2fs infer (rtf %.3f): %r",
                  seconds, peak, elapsed, elapsed / max(seconds, 0.01), text)
-        if self.mode == "format" and text:
+        if self.fixer and text:
             t0 = time.time()
-            heard, text = text, self.formatter.format(text)
-            log.info("format %r -> %r (%.2fs)", heard, text, time.time() - t0)
-        else:
-            text = tidy_short(text, self.cfg.short_words)
+            fixed = self.fixer.fix(text)
+            if fixed != text:
+                log.info("fixed -> %r (%.2fs)", fixed, time.time() - t0)
+            text = fixed
+        text = tidy_short(text, self.cfg.short_words)
         if not text:
             self.levels.send("nothing")
             self.set_state("idle")
@@ -221,9 +214,7 @@ class Daemon:
         return text
 
     def deliver(self, text: str) -> None:
-        # A formatted string (URL, name) is typed exactly, with nothing after it.
-        space = self.cfg.trailing_space and self.mode != "format"
-        payload = text + (" " if space else "")
+        payload = text + (" " if self.cfg.trailing_space else "")
         # Typing a long result takes seconds (wtype, ~220 chars/s); the overlay
         # shows a progress bar for it.
         self.levels.send(f"typing {len(payload) if self.cfg.output == 'type' else 0}")
@@ -234,16 +225,11 @@ class Daemon:
     def run(self) -> int:
         self.load_model()
 
-        keys = {}
-        for name, mode in ((self.cfg.key, "type"), (self.cfg.format_key, "format")):
-            if not name:
-                continue
-            code = getattr(evdev.ecodes, name, None)
-            if code is None:
-                log.error("unknown key %s", name)
-                return 2
-            keys[code] = mode
-        watcher = KeyWatcher(keys, self.cfg.devices, self.events)
+        keycode = getattr(evdev.ecodes, self.cfg.key, None)
+        if keycode is None:
+            log.error("unknown key %s", self.cfg.key)
+            return 2
+        watcher = KeyWatcher(keycode, self.cfg.devices, self.events)
         if watcher.prepare() == 0:
             # Not fatal: the watcher keeps looking, so a keyboard plugged in
             # later still works, and start/stop over the socket work anyway.
@@ -264,8 +250,7 @@ class Daemon:
         self.set_state("idle")
         log.info("ready, hold %s to dictate", self.cfg.key)
 
-        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file,
-                    "format": self.on_format}
+        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file}
         try:
             while True:
                 kind, *args = self.events.get()

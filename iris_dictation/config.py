@@ -99,19 +99,19 @@ class Config:
 
     notify: bool = True
 
-    # Format mode: hold format_key (or send start-format on the socket) and
-    # the phrase is typed as the exact string it names: "example dot com web
-    # page" -> https://example.com, "method get user" -> getUser. Fixed rules
-    # do the simple cases; the rest goes to a small local language model
-    # behind an OpenAI-compatible endpoint (Ollama by default:
-    #   ollama pull qwen3.5:2b-q4_K_M).
-    # Your own words and spellings go in ~/.config/iris-dictation/vocabulary.toml (see
-    # vocabulary.example.toml). Empty key = no format key.
-    format_key: str = ""
-    format_url: str = "http://localhost:11434/v1"
-    format_model: str = "qwen3.5:2b-q4_K_M"
-    # Seconds to wait for the model; loading it from disk can take ~10 s.
-    format_timeout: float = 20.0
+    # Second pass: a small local language model fixes words Whisper misheard
+    # from your vocabulary (~/.config/iris-dictation/vocabulary.toml, see
+    # vocabulary.example.toml), drops filler sounds, and keeps only the
+    # corrected version when you correct yourself ("Monday, no wait,
+    # Tuesday"). About 0.1 s on a GPU. Any change beyond that is rejected and
+    # Whisper's own text is typed. Needs an OpenAI-compatible server, e.g.
+    #   ollama pull qwen3.5:2b-q4_K_M
+    # Empty fix_model = off.
+    fix_model: str = ""
+    fix_url: str = "http://localhost:11434/v1"
+    # Seconds to wait for the model. It is loaded while you talk, but a cold
+    # load from disk can take ~10 s; past this Whisper's text is typed.
+    fix_timeout: float = 5.0
 
     # Mute these apps' microphone streams while the key is held, so a voice
     # call does not hear the dictation. Matched case-insensitively against

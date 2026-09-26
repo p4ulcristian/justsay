@@ -29,8 +29,7 @@ class LevelServer(threading.Thread):
     """Broadcasts one line per event to every connected client (the Omarchy
     shell's waveform overlay): "recording", "level 0.42" about every 20 ms
     while recording (0..1, voice loudness), "transcribing", "text <result>",
-    "typing <chars>" (0 = instant paste), "nothing", "idle", and "format"
-    right after "recording" when the recording is in format mode."""
+    "typing <chars>" (0 = instant paste), "nothing", "idle"."""
 
     def __init__(self, path: str) -> None:
         super().__init__(daemon=True)
@@ -109,11 +108,7 @@ class ControlServer(threading.Thread):
     def handle(self, cmd: str) -> str:
         verb, _, arg = cmd.partition(" ")
         if verb == "start":
-            self.events.put(("down", "type"))
-            return "ok"
-        if verb == "start-format":
-            # Record; on stop the phrase becomes the exact string it names.
-            self.events.put(("down", "format"))
+            self.events.put(("down",))
             return "ok"
         if verb == "stop":
             self.events.put(("up",))
@@ -123,7 +118,7 @@ class ControlServer(threading.Thread):
             # it (omarchy-controller sends it to Iris). Empty reply = nothing heard.
             return self.ask("up")
         if verb == "toggle":
-            self.events.put(("up",) if self.status() == "recording" else ("down", "type"))
+            self.events.put(("up",) if self.status() == "recording" else ("down",))
             return "ok"
         if verb == "status":
             return self.status()
@@ -131,9 +126,6 @@ class ControlServer(threading.Thread):
             # Replies with the text instead of typing it, so tests and scripts
             # can check what was heard.
             return self.ask("file", arg.strip())
-        if verb == "format":
-            # Format a phrase given as text, no audio. For scripts and tests.
-            return self.ask("format", arg.strip())
         if verb == "ping":
             return "pong"
         if verb == "quit":
