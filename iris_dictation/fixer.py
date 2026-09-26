@@ -137,6 +137,21 @@ def allowed(before: str, after: str, known: list[str]) -> bool:
     return True
 
 
+def respell(before: str, after: str, known: list[str]) -> str:
+    """Give each word the model brought in the exact spelling from the
+    vocabulary ("github" -> "GitHub"). Words that were already in `before`
+    keep theirs."""
+    spelled = {_squash(k): k for k in known if " " not in k}
+    said = set(_words(before))
+    out = []
+    for token in after.split():
+        core = token.strip(".,!?;:\"'()…")
+        if core and core.lower() not in said and _squash(core) in spelled:
+            token = token.replace(core, spelled[_squash(core)])
+        out.append(token)
+    return " ".join(out)
+
+
 def worth_asking(text: str, vocab: Vocabulary) -> bool:
     """Skip the model when it could not change anything anyway."""
     words = _words(text)
@@ -204,4 +219,4 @@ class Fixer:
         if not allowed(text, fixed, vocab.known()):
             log.info("fix rejected: %r -> %r", text, fixed)
             return text
-        return fixed
+        return respell(text, fixed, vocab.known())

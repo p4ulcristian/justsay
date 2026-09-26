@@ -6,7 +6,15 @@ import os
 
 import pytest
 
-from iris_dictation.fixer import Fixer, Vocabulary, VocabularyFile, allowed, messages, worth_asking
+from iris_dictation.fixer import (
+    Fixer,
+    Vocabulary,
+    VocabularyFile,
+    allowed,
+    messages,
+    respell,
+    worth_asking,
+)
 
 KNOWN = ["Zorbex", "Quillo", "foobartools.com"]
 
@@ -105,3 +113,12 @@ def test_nothing_to_fix_skips_the_model(tmp_path, monkeypatch):
     f, asked = make(tmp_path, monkeypatch, reply="never used", vocabulary="")
     assert f.fix("A plain sentence.") == "A plain sentence."
     assert asked == []
+
+
+@pytest.mark.parametrize("before, after, expected", [
+    ("I pushed it to git hub.", "I pushed it to github.", "I pushed it to GitHub."),
+    ("See zorbax.", "See zorbex.", "See Zorbex."),
+    ("the zorbex tool", "the zorbex tool", "the zorbex tool"),    # said that way: kept
+])
+def test_respell(before, after, expected):
+    assert respell(before, after, KNOWN + ["GitHub"]) == expected
