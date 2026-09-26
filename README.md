@@ -125,6 +125,28 @@ copied from [vocabulary.example.toml](vocabulary.example.toml); edits apply on
 the next dictation. The file and the model both stay on your machine. The
 journal shows Whisper's text and every fix, so a wrong fix is easy to spot.
 
+The `[heard]` entries in that file are certain: a phrase Whisper keeps
+getting wrong is always replaced, with or without the model. The model's own
+changes are checked one by one, and only the allowed ones are kept.
+
+Check what a sentence would become: `iris-dictation fix "my dual sense controller"`.
+
+### Let an agent find your mishearings
+
+```sh
+iris-dictation-learn            # dictations since the last run (or the last 7 days)
+iris-dictation-learn --since=-2h --dry-run
+```
+
+It hands your recent dictations to an AI agent, which looks for mishearings
+(the same thing said again a few seconds later, spelled differently; names
+written wrong) and proposes entries. You answer y/n to each. The accepted
+ones go into your vocabulary and are checked against the dictations they came
+from. The agent has no tools and changes nothing itself. By default it is
+Claude Code (`claude -p`), which means the reviewed dictations are sent to
+Anthropic; set `IRIS_DICTATION_AGENT` to any command that reads the prompt on
+stdin and prints the JSON answer to use another one.
+
 ## Config
 
 Optional: `~/.config/iris-dictation/config.toml`. Every setting and its default is

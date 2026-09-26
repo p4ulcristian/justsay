@@ -59,3 +59,10 @@ def test_transcribe_replies_with_text():
     t = answer(events, "a satellite")
     assert ctl.handle("transcribe /tmp/x.wav") == "a satellite"
     t.join()
+
+
+def test_fix_replies_with_text():
+    ctl, events = server()
+    t = answer(events, "Commit and push.")
+    assert ctl.handle("fix Comitant Push.") == "Commit and push."
+    t.join()

@@ -48,7 +48,7 @@ else
 fi
 
 mkdir -p ~/.local/bin ~/.config/systemd/user
-for b in iris-dictation-daemon iris-dictation iris-dictation-selftest; do
+for b in iris-dictation-daemon iris-dictation iris-dictation-selftest iris-dictation-learn; do
   ln -sfn "$SRC/bin/$b" ~/.local/bin/$b
 done
 

@@ -28,7 +28,7 @@ from . import audio, languages
 from . import config as cfgmod
 from . import output as out
 from .audio import HotRecorder, Recorder
-from .fixer import Fixer, VocabularyFile
+from .fixer import Fixer, VocabularyFile, replace_heard
 from .keys import KeyWatcher
 from .mute import StreamMuter
 from .sockets import LEVELS_SOCKET, SOCKET_NAME, ControlServer, LevelServer
@@ -64,8 +64,9 @@ class Daemon:
         self.cfg = cfg
         self.events: queue.Queue = queue.Queue()
         self.state = "idle"
+        self.vocabulary = VocabularyFile(cfgmod.VOCABULARY_PATH)
         self.fixer = Fixer(cfg.fix_url, cfg.fix_model, cfg.fix_timeout,
-                           VocabularyFile(cfgmod.VOCABULARY_PATH)) if cfg.fix_model else None
+                           self.vocabulary) if cfg.fix_model else None
         if cfg.preroll_ms > 0:
             self.recorder = HotRecorder(cfg.sample_rate, cfg.max_seconds,
                                         cfg.audio_source, cfg.preroll_ms)
@@ -196,9 +197,9 @@ class Daemon:
         elapsed = time.time() - t0
         log.info("%.1fs audio (peak rms %.4f) -> %.2fs infer (rtf %.3f): %r",
                  seconds, peak, elapsed, elapsed / max(seconds, 0.01), text)
-        if self.fixer and text:
+        if text:
             t0 = time.time()
-            fixed = self.fixer.fix(text)
+            fixed = self.second_pass(text)
             if fixed != text:
                 log.info("fixed -> %r (%.2fs)", fixed, time.time() - t0)
             text = fixed
@@ -212,6 +213,15 @@ class Daemon:
             self.deliver(text)
         self.set_state("idle")
         return text
+
+    def second_pass(self, text: str) -> str:
+        """Taught mishearings (always), then the model (when configured)."""
+        text = replace_heard(text, self.vocabulary.get().heard)
+        return self.fixer.fix(text) if self.fixer else text
+
+    def on_fix(self, text: str, box: queue.Queue) -> None:
+        """Run a text through the second pass and reply with the result."""
+        box.put(self.second_pass(text) if text else "")
 
     def deliver(self, text: str) -> None:
         payload = text + (" " if self.cfg.trailing_space else "")
@@ -250,7 +260,8 @@ class Daemon:
         self.set_state("idle")
         log.info("ready, hold %s to dictate", self.cfg.key)
 
-        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file}
+        handlers = {"down": self.on_down, "up": self.on_up, "file": self.on_file,
+                    "fix": self.on_fix}
         try:
             while True:
                 kind, *args = self.events.get()

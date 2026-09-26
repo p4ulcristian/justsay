@@ -105,36 +105,49 @@ def _squash(text: str) -> str:
     return re.sub(r"[\s\-_]", "", text.lower())
 
 
-def allowed(before: str, after: str, known: list[str]) -> bool:
-    """Whether `after` differs from `before` only in the ways the model may
-    change it: known words for similar-sounding ones, fillers dropped, and,
-    after a correction cue, words dropped."""
-    a, b = _words(before), _words(after)
-    if not b:
-        return not a or all(w in FILLERS for w in a)
+def _core(token: str) -> str:
+    return token.strip(".,!?;:\"'()…").lower() or token
+
+
+def _change_ok(tag: str, old: list[str], new: list[str], cue: bool, known: set[str]) -> bool:
+    """Whether one change is one the model may make: a known word for one
+    that sounds like it, fillers dropped, or, after a correction cue, the
+    words being corrected dropped."""
+    if tag == "insert":
+        return False
+    if tag == "delete":
+        return cue or all(w in FILLERS for w in old)
+    kept = [w for w in old if w not in FILLERS]
+    joined = _squash("".join(new))
+    if joined in known and \
+            difflib.SequenceMatcher(None, _squash("".join(kept)), joined).ratio() >= 0.5:
+        return True
+    return cue and set(new) <= set(old)     # what is left was said anyway
+
+
+def merge(before: str, after: str, known: list[str]) -> str:
+    """`before` with only the allowed changes from `after` applied; each
+    change is judged on its own, so one bad change does not cost the good
+    ones. Unchanged words keep Whisper's punctuation."""
+    a_tok, b_tok = before.split(), after.split()
+    a, b = [_core(t) for t in a_tok], [_core(t) for t in b_tok]
     cue = any(c in " ".join(a) for c in CUES)
-    known_squashed = {_squash(k) for k in known}
+    squashed = {_squash(k) for k in known}
+    out: list[str] = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if tag == "equal":
-            continue
-        old, new = " ".join(a[i1:i2]), " ".join(b[j1:j2])
-        if tag == "delete":
-            if cue or all(w in FILLERS for w in a[i1:i2]):
-                continue
-            return False
-        if tag == "insert":
-            return False
-        # replace: a known word for one that sounds like it, or, after a cue,
-        # dropping the words being corrected (what is left was said anyway).
-        kept = [w for w in a[i1:i2] if w not in FILLERS]
-        if _squash(new) in known_squashed and \
-                difflib.SequenceMatcher(None, _squash(" ".join(kept)), _squash(new)).ratio() >= 0.5:
-            continue
-        if cue and set(b[j1:j2]) <= set(a[i1:i2]):
-            continue
-        log.debug("fix changed %r -> %r: not allowed", old, new)
-        return False
-    return True
+            out += a_tok[i1:i2]
+        elif _change_ok(tag, a[i1:i2], b[j1:j2], cue, squashed):
+            out += b_tok[j1:j2]
+        else:
+            log.debug("fix %r -> %r: not allowed", " ".join(a_tok[i1:i2]), " ".join(b_tok[j1:j2]))
+            out += a_tok[i1:i2]
+    return " ".join(out)
+
+
+def allowed(before: str, after: str, known: list[str]) -> bool:
+    """Whether every change from `before` to `after` is allowed."""
+    return _words(merge(before, after, known)) == _words(after)
 
 
 def respell(before: str, after: str, known: list[str]) -> str:
@@ -150,6 +163,22 @@ def respell(before: str, after: str, known: list[str]) -> str:
             token = token.replace(core, spelled[_squash(core)])
         out.append(token)
     return " ".join(out)
+
+
+def replace_heard(text: str, heard: dict[str, str]) -> str:
+    """Apply the taught mishearings: whole words, any case. Unlike the model,
+    these always apply, so a taught fix is certain."""
+    for said in sorted(heard, key=len, reverse=True):
+        meant = heard[said]
+
+        def swap(m: re.Match, meant: str = meant) -> str:
+            # A phrase at the start of a sentence keeps its capital letter.
+            start = m.start() == 0 or m.string[:m.start()].rstrip()[-1:] in ".!?"
+            if start and " " in meant and m[0][:1].isupper():
+                return meant[:1].upper() + meant[1:]
+            return meant
+        text = re.sub(rf"(?<!\w){re.escape(said)}(?!\w)", swap, text, flags=re.I)
+    return text
 
 
 def worth_asking(text: str, vocab: Vocabulary) -> bool:
@@ -214,9 +243,12 @@ class Fixer:
         except Exception as exc:
             log.warning("fix model failed (%s), typing Whisper's text", exc)
             return text
-        if fixed == text:
+        if _words(fixed) == _words(text):
+            return text          # only case or punctuation changed: keep Whisper's
+
+        merged = merge(text, fixed, vocab.known())
+        if _words(merged) != _words(fixed):
+            log.info("fix partly rejected: %r -> %r", text, fixed)
+        if _words(merged) == _words(text):
             return text
-        if not allowed(text, fixed, vocab.known()):
-            log.info("fix rejected: %r -> %r", text, fixed)
-            return text
-        return respell(text, fixed, vocab.known())
+        return respell(text, merged, vocab.known())

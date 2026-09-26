@@ -17,6 +17,7 @@ USAGE = """usage: iris-dictation <command>
   toggle       start if idle, stop if recording
   status       print idle | recording | transcribing
   transcribe <file.wav>   run a wav through the pipeline, print the text
+  fix <text>              print what the second pass makes of a text
   ping         check the daemon is alive
   quit         shut the daemon down
 """

@@ -126,6 +126,10 @@ class ControlServer(threading.Thread):
             # Replies with the text instead of typing it, so tests and scripts
             # can check what was heard.
             return self.ask("file", arg.strip())
+        if verb == "fix":
+            # The second pass on a given text, no audio: what a dictation of
+            # these words would type. For checking the vocabulary.
+            return self.ask("fix", arg.strip())
         if verb == "ping":
             return "pong"
         if verb == "quit":

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0
+
+Added:
+- `iris-dictation-learn`: an AI agent reviews your recent dictations and
+  proposes vocabulary entries, you accept each with y/n, and the accepted
+  ones are checked against the dictations they came from.
+- `iris-dictation fix <text>`: what the second pass makes of a text.
+
+Changed:
+- `[heard]` vocabulary entries always apply, with or without `fix_model`,
+  so a taught fix is certain.
+- The second pass judges each of the model's changes on its own and keeps
+  the allowed ones, instead of rejecting the whole answer for one bad change.
+- Vocabulary words brought in by the model keep their listed spelling.
+- Changes to case or punctuation alone are ignored; Whisper's text is kept.
+
 ## 1.3.0
 
 Added:

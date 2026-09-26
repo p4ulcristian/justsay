@@ -11,7 +11,9 @@ from iris_dictation.fixer import (
     Vocabulary,
     VocabularyFile,
     allowed,
+    merge,
     messages,
+    replace_heard,
     respell,
     worth_asking,
 )
@@ -122,3 +124,31 @@ def test_nothing_to_fix_skips_the_model(tmp_path, monkeypatch):
 ])
 def test_respell(before, after, expected):
     assert respell(before, after, KNOWN + ["GitHub"]) == expected
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("Comitant Push.", "Commit and push."),                   # sentence start keeps its capital
+    ("then comitant push please", "then commit and push please"),
+    ("Check IronyMu.com please.", "Check zorbex.example please."),
+    ("the zorbaxes", "the zorbaxes"),                         # whole words only
+])
+def test_replace_heard(text, expected):
+    heard = {"comitant push": "commit and push", "IronyMu.com": "zorbex.example",
+             "zorbax": "Zorbex"}
+    assert replace_heard(text, heard) == expected
+
+
+def test_case_and_punctuation_only_keeps_whisper(tmp_path, monkeypatch):
+    f, _ = make(tmp_path, monkeypatch, reply="comitant push")
+    assert f.fix("Comitant Push.") == "Comitant Push."
+
+
+def test_merge_keeps_the_good_changes_only():
+    before = "The zorbax gate, open quilo.zorbax.example"
+    after = "The zor-bax gate, open quillo.zorbex.example"
+    assert merge(before, after, ["quillo.zorbex.example"]) == \
+        "The zorbax gate, open quillo.zorbex.example"
+
+
+def test_merge_drops_fillers_keeps_punctuation():
+    assert merge("So, um, the tests pass.", "So the tests pass", []) == "So, the tests pass."
