@@ -10,11 +10,11 @@ import qs.Ui
 // live voice level on $XDG_RUNTIME_DIR/iris-dictation/levels.sock (see PROTOCOL.md),
 // one line per event:
 //   recording | level 0.42 | transcribing | text <result> | typing <chars> | nothing | idle
-// One look from start to finish: a dot on the left and three tapered neon sine
-// waves. While recording both follow the voice. While waiting (transcribing,
-// then typing the text out) they ease into a slow breath of their own; during
-// typing the waves sit behind the text and light up from the left as it goes
-// out. The dot stays until the pill hides.
+// One look from start to finish: a still dot on the left and three tapered neon
+// sine waves. While recording the waves follow the voice. While waiting
+// (transcribing, then typing the text out) they ease into a slow breath of their
+// own; during typing they sit behind the text and light up from the left as it
+// goes out.
 Item {
   id: root
 
@@ -26,8 +26,8 @@ Item {
   property real clock: 0              // seconds, drives the breath while waiting
   property real typed: 0              // 0..1, typing progress bar
   property bool typing: false
-  // Waiting on iris-dictation (transcribing, then typing a long result): the dot and
-  // the waves breathe on their own instead of following the voice.
+  // Waiting on iris-dictation (transcribing, then typing a long result): the waves
+  // breathe on their own instead of following the voice.
   readonly property bool loading: mode === "transcribing" || (mode === "result" && typing)
 
   readonly property bool shown: mode !== "hidden"
@@ -175,11 +175,11 @@ Item {
       color: Util.alpha(Color.background, 0.9)
       borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
 
-      // The dot: pulses with the voice, breathes while waiting, rests on the result.
+      // The dot: a fixed marker for as long as the pill is up.
       Rectangle {
         x: 22
         anchors.verticalCenter: parent.verticalCenter
-        width: 12 + 6 * root.amp
+        width: 14
         height: width
         radius: width / 2
         gradient: Gradient {
